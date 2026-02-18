@@ -3,124 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PHANTOM V22.3 | TACTICAL RADIO</title>
+    <title>PHANTOM V22.3 | ULTIMATE</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --neon: #00ff41; --sos: #ff3131; --ptt: #ff8c00; --rx: #0088ff; --bg: #050508; }
-        
-        body { 
-            margin: 0; background: var(--bg); color: white; 
-            font-family: 'Courier New', monospace; height: 100vh; 
-            display: flex; flex-direction: column; overflow: hidden;
-        }
-
-        .app-shell { flex: 1; display: flex; flex-direction: column; padding: 15px; padding-bottom: 90px; box-sizing: border-box; }
-
-        /* HEADER */
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        .app-shell { flex: 1; display: flex; flex-direction: column; padding: 15px; padding-bottom: 90px; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; font-size: 11px; }
         #status-led { width: 10px; height: 10px; border-radius: 50%; background: #333; }
         .led-tx { background: var(--sos) !important; box-shadow: 0 0 10px var(--sos); }
         .led-rx { background: var(--rx) !important; box-shadow: 0 0 10px var(--rx); }
-
-        /* ALERTAS SOS / LOC */
-        .emergency-tools { display: flex; gap: 10px; margin: 15px 0; }
-        .btn-alert { flex: 1; padding: 15px; border-radius: 12px; border: none; font-weight: bold; color: white; cursor: pointer; font-size: 14px; }
-        #sos-btn { background: var(--sos); box-shadow: 0 0 10px rgba(255,49,49,0.3); }
-        #loc-btn { background: var(--rx); box-shadow: 0 0 10px rgba(0,136,255,0.3); }
-
-        /* BOTÓN PTT */
-        #talk-btn { 
-            width: 100%; padding: 45px 0; border-radius: 25px; border: 2px solid #333; 
-            background: #111; color: #444; font-weight: 900; font-size: 22px; 
-            touch-action: none; transition: 0.1s;
-        }
+        .emergency-tools { display: flex; gap: 10px; margin: 10px 0; }
+        .btn-alert { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; }
+        #sos-btn { background: var(--sos); }
+        #loc-btn { background: var(--rx); }
+        #talk-btn { width: 100%; padding: 40px 0; border-radius: 20px; border: 2px solid #333; background: #111; color: #444; font-weight: 900; font-size: 20px; touch-action: none; margin: 10px 0; }
         #talk-btn.ready { background: var(--ptt); color: black; border-color: var(--ptt); }
-        #talk-btn.active { background: var(--sos); color: white; transform: scale(0.98); }
-
-        /* CHAT Y MENSAJES */
-        #chat { flex: 1; overflow-y: auto; margin-top: 15px; padding: 10px; background: rgba(0,0,0,0.3); border-radius: 10px; border: 1px solid #111; }
-        .msg { background: rgba(255,255,255,0.03); padding: 10px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--neon); font-size: 13px; }
-        .msg-alert { border-left-color: var(--sos) !important; background: rgba(255,0,0,0.1); }
-        .map-link { color: var(--neon); display: block; margin-top: 5px; text-decoration: none; font-weight: bold; }
-
-        /* BARRA DE ENTRADA FIJA */
+        #talk-btn.active { background: var(--sos); color: white; }
+        #chat { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; border: 1px solid #111; margin-bottom: 10px; }
+        .msg { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--neon); font-size: 12px; }
         .input-area { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; gap: 8px; padding: 15px; background: #000; border-top: 1px solid #222; box-sizing: border-box; }
-        #msg-in { background: #111; border: 1px solid #333; color: var(--neon); padding: 12px; border-radius: 10px; flex: 1; outline: none; font-size: 16px; }
-
-        /* LOGIN OVERLAY */
-        #auth-overlay { position: fixed; inset: 0; background: #000; display: flex; justify-content: center; align-items: center; z-index: 1000; }
-        .card { background: #0a0a0a; padding: 30px; border-radius: 30px; border: 1px solid var(--neon); width: 85%; max-width: 380px; }
-        .card input { width: 100%; padding: 12px; margin-bottom: 12px; border-radius: 10px; background: #000; border: 1px solid #333; color: white; box-sizing: border-box; }
+        #msg-in { background: #111; border: 1px solid #333; color: var(--neon); padding: 12px; border-radius: 10px; flex: 1; outline: none; }
+        #auth-overlay { position: fixed; inset: 0; background: #000; display: flex; justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; }
+        .card { background: #0a0a0a; padding: 25px; border-radius: 25px; border: 1px solid var(--neon); width: 85%; max-width: 380px; }
+        .card input { width: 100%; padding: 12px; margin-bottom: 10px; background: #000; border: 1px solid #333; color: white; border-radius: 8px; box-sizing: border-box; }
+        #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 20px; padding: 15px; background: white; border-radius: 15px; display: none; }
+        #qr-container p { color: black; font-size: 10px; margin-top: 8px; font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay">
-    <form class="card" onsubmit="event.preventDefault(); initConnection();">
-        <h2 style="color: var(--neon); text-align: center; letter-spacing: 4px; margin-top:0;">PHANTOM V22.3</h2>
-        <input type="text" id="url-in" placeholder="URL RENDER (HTTPS://...)" required>
+    <form class="card" onsubmit="event.preventDefault(); startEnlace();">
+        <h2 style="color: var(--neon); text-align: center; margin-top:0;">PHANTOM V22.3</h2>
+        <input type="text" id="url-in" placeholder="URL RENDER (HTTPS)" required>
         <input type="text" id="nick-in" placeholder="ID OPERADOR" required>
-        <input type="text" id="room-in" placeholder="CANAL / FRECUENCIA" required>
+        <input type="text" id="room-in" placeholder="CANAL TÁCTICO" required>
         <input type="password" id="pass-in" placeholder="PASSWORD E2EE" required>
-        <button type="submit" id="login-btn" style="width:100%; padding:15px; background:var(--neon); border:none; border-radius:12px; font-weight:bold; cursor:pointer; color:black;">ESTABLECER VÍNCULO</button>
-        <p id="st-msg" style="font-size: 10px; text-align: center; color: #555; margin-top: 15px;">MEMORIA VOLÁTIL ACTIVADA</p>
+        <button type="submit" style="width:100%; padding:15px; background:var(--neon); border:none; border-radius:10px; font-weight:bold; cursor:pointer;">CONECTAR</button>
+        
+        <div id="qr-container">
+            <div id="qrcode"></div>
+            <p>COMPARTE ESTE ACCESO<br>CON TU EQUIPO</p>
+        </div>
+        <button type="button" onclick="generateTacticalQR()" id="gen-qr-btn" style="width:100%; margin-top:15px; background:transparent; border:1px solid #444; color:#666; padding:8px; border-radius:8px; font-size:10px;">GENERAR QR AUTO-CONFIGURABLE</button>
     </form>
 </div>
 
 <div class="app-shell">
     <header>
         <div id="status-led"></div>
-        <span id="latency-val">LAT: --ms</span>
-        <span id="user-count">USR: 0</span>
+        <span id="user-count">USUARIOS: 0</span>
     </header>
-
     <div class="emergency-tools">
         <button id="sos-btn" class="btn-alert" onclick="triggerAlert('SOS')">🚨 SOS</button>
-        <button id="loc-btn" class="btn-alert" onclick="triggerAlert('LOC')">📍 LOCALIZAR</button>
+        <button id="loc-btn" class="btn-alert" onclick="triggerAlert('LOC')">📍 POS</button>
     </div>
-
-    <button id="talk-btn" disabled>CONECTANDO...</button>
-
+    <button id="talk-btn" disabled>ESPERANDO ENLACE...</button>
     <div id="chat"></div>
 </div>
 
 <div class="input-area">
-    <input type="text" id="msg-in" placeholder="Transmitir texto..." onkeydown="if(event.key==='Enter') sendMsg()">
-    <button onclick="sendMsg()" style="background:var(--neon); border:none; border-radius:10px; width:50px; font-weight:bold; color:black;">></button>
+    <input type="text" id="msg-in" placeholder="Mensaje..." onkeydown="if(event.key==='Enter') sendMsg()">
+    <button onclick="sendMsg()" style="background:var(--neon); border:none; border-radius:10px; width:50px; font-weight:bold;">></button>
 </div>
 
 <script>
-    let socket, audioCtx, mainGain, cryptoKey, mediaRecorder, stream, myNick, btn, startLat;
-    let audioBlobs = [];
+    let socket, audioCtx, mainGain, cryptoKey, mediaRecorder, stream, myNick, btn;
 
-    // --- SEGURIDAD: DERIVACIÓN DE CLAVE SHA-512 ---
-    async function deriveKey(p) {
-        const enc = new TextEncoder();
-        const iterations = 600000; 
-        const salt = enc.encode("tactical-radio-v22-secure-salt-fixed");
-        const bk = await crypto.subtle.importKey("raw", enc.encode(p), "PBKDF2", false, ["deriveKey"]);
-        return crypto.subtle.deriveKey(
-            { name: "PBKDF2", salt, iterations, hash: "SHA-512" }, 
-            bk, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
-        );
+    // --- DETECTAR PARÁMETROS EN URL AL CARGAR ---
+    window.onload = () => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('srv')) {
+            document.getElementById('url-in').value = atob(params.get('srv'));
+            document.getElementById('st-msg')?.insertAdjacentHTML('afterend', '<p style="color:var(--neon); font-size:9px; text-align:center;">CONFIGURACIÓN CARGADA POR QR</p>');
+        }
+    };
+
+    function generateTacticalQR() {
+        const srvUrl = document.getElementById('url-in').value.trim();
+        if(!srvUrl) return alert("Escribe primero la URL de Render");
+        
+        const baseWeb = window.location.href.split('?')[0];
+        const configUrl = `${baseWeb}?srv=${btoa(srvUrl)}`; // Codificamos la URL en Base64
+        
+        const qrDiv = document.getElementById('qrcode');
+        qrDiv.innerHTML = "";
+        new QRCode(qrDiv, { text: configUrl, width: 160, height: 160 });
+        
+        document.getElementById('qr-container').style.display = "flex";
+        document.getElementById('gen-qr-btn').style.display = "none";
     }
 
-    // --- CONEXIÓN Y AUTH ---
-    async function initConnection() {
-        const url = document.getElementById('url-in').value.trim();
-        const msg = document.getElementById('st-msg');
-        
-        if(!url.startsWith('https://')) return alert("LA URL DEBE SER HTTPS");
-        
-        msg.innerText = "ESTABLECIENDO ENLACE CIFRADO...";
-        document.getElementById('login-btn').disabled = true;
+    async function deriveKey(p) {
+        const enc = new TextEncoder();
+        const salt = enc.encode("tactical-radio-v22-secure-salt-fixed");
+        const bk = await crypto.subtle.importKey("raw", enc.encode(p), "PBKDF2", false, ["deriveKey"]);
+        return crypto.subtle.deriveKey({ name: "PBKDF2", salt, iterations: 600000, hash: "SHA-512" }, bk, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+    }
 
-        socket = io(url, { transports: ['websocket', 'polling'], reconnectionAttempts: 5 });
+    async function startEnlace() {
+        const url = document.getElementById('url-in').value.trim();
+        socket = io(url, { transports: ['websocket', 'polling'] });
 
         socket.on('connect', async () => {
             myNick = document.getElementById('nick-in').value;
             cryptoKey = await deriveKey(document.getElementById('pass-in').value);
-            
             socket.emit('join-room', { 
                 roomName: document.getElementById('room-in').value, 
                 password: document.getElementById('pass-in').value, 
@@ -130,76 +119,61 @@
 
         socket.on('joined-success', () => {
             document.getElementById('auth-overlay').style.display = 'none';
-            setupRadio();
-        });
-
-        socket.on('connect_error', () => {
-            msg.innerText = "ERROR DE ENLACE. REINTENTANDO...";
-            document.getElementById('login-btn').disabled = false;
+            setupLogic();
         });
     }
 
-    function setupRadio() {
+    function setupLogic() {
         btn = document.getElementById('talk-btn');
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         mainGain = audioCtx.createGain(); mainGain.connect(audioCtx.destination);
-        
-        initMic();
 
-        socket.on('audio-stream', async d => {
-            try {
+        socket.on('user-list', list => { document.getElementById('user-count').innerText = `USUARIOS: ${list.length}`; });
+        
+        socket.on('channel-busy', user => {
+            if(user !== myNick) {
+                btn.disabled = true;
+                btn.innerText = `RX: ${user.toUpperCase()}`;
+                btn.classList.remove('ready');
                 document.getElementById('status-led').classList.add('led-rx');
-                const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(d.iv) }, cryptoKey, new Uint8Array(d.ciphertext));
-                const url = URL.createObjectURL(new Blob([dec], { type: 'audio/webm' }));
-                audioBlobs.push(url);
-                const audio = new Audio(url);
-                audio.play();
-                audio.onended = () => {
-                    document.getElementById('status-led').classList.remove('led-rx');
-                    URL.revokeObjectURL(url);
-                };
-            } catch(e) { console.error("Fallo de descifrado"); }
+            }
         });
 
-        socket.on('incoming-alert', d => {
-            const isSOS = d.type === 'SOS';
-            if(isSOS) playEmergencyTone();
-            
-            const div = document.createElement('div');
-            div.className = `msg ${isSOS ? 'msg-alert' : ''}`;
-            const mapUrl = `https://www.google.com/maps?q=${d.coords.lat},${d.coords.lon}`;
-            
-            div.innerHTML = `
-                <small>${d.time}</small><b>${isSOS ? '🚨 SOS' : '📍 POS'} - ${d.user}</b>
-                <a href="${mapUrl}" target="_blank" class="map-link">VER LOCALIZACIÓN GPS</a>
-            `;
-            document.getElementById('chat').appendChild(div);
-            document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+        socket.on('channel-free', () => {
+            btn.disabled = false; btn.innerText = "PULSAR PARA HABLAR";
+            btn.classList.add('ready');
+            document.getElementById('status-led').classList.remove('led-rx');
+            document.getElementById('status-led').classList.remove('led-tx');
         });
 
         socket.on('chat-message', d => {
-            const div = document.createElement('div'); div.className = 'msg';
-            const userBold = document.createElement('b'); userBold.textContent = d.user + ": ";
-            const textNode = document.createTextNode(d.text);
-            div.appendChild(userBold); div.appendChild(textNode);
+            const div = document.createElement('div');
+            div.className = 'msg';
+            div.innerHTML = `<b>${d.user}:</b> ${d.text}`;
             document.getElementById('chat').appendChild(div);
             document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
         });
 
-        socket.on('user-list', list => { document.getElementById('user-count').innerText = `USR: ${list.length}`; });
-        socket.on('channel-busy', u => { btn.disabled = true; btn.innerText = "TX: " + u; btn.classList.remove('ready'); });
-        socket.on('channel-free', () => { btn.disabled = false; btn.innerText = "PULSAR PARA HABLAR"; btn.classList.add('ready'); });
+        socket.on('audio-stream', async d => {
+            try {
+                const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(d.iv) }, cryptoKey, new Uint8Array(d.ciphertext));
+                const audio = new Audio(URL.createObjectURL(new Blob([dec], { type: 'audio/webm' })));
+                audio.play();
+            } catch(e) {}
+        });
+
+        initMic();
     }
 
     function initMic() {
         navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
             stream = s;
-            btn.disabled = false; btn.classList.add('ready'); btn.innerText = "PULSAR PARA HABLAR";
+            btn.disabled = false; btn.classList.add('ready');
 
             const startPTT = (e) => {
-                if(e.cancelable) e.preventDefault();
-                if(btn.disabled || btn.classList.contains('active')) return;
-                audioCtx.resume(); btn.classList.add('active');
+                if(btn.disabled) return;
+                audioCtx.resume();
+                btn.classList.add('active');
                 document.getElementById('status-led').classList.add('led-tx');
                 socket.emit('request-mic');
                 
@@ -221,27 +195,13 @@
             const stopPTT = () => {
                 if(mediaRecorder?.state === 'recording') {
                     mediaRecorder.stop(); socket.emit('release-mic');
-                    btn.classList.remove('active'); document.getElementById('status-led').classList.remove('led-tx');
+                    btn.classList.remove('active');
                 }
             };
 
-            btn.addEventListener('touchstart', startPTT); btn.addEventListener('touchend', stopPTT);
-            btn.onmousedown = startPTT; btn.onmouseup = stopPTT;
+            btn.addEventListener('touchstart', startPTT);
+            btn.addEventListener('touchend', stopPTT);
         });
-    }
-
-    function triggerAlert(type) {
-        navigator.geolocation.getCurrentPosition(p => {
-            socket.emit('send-alert', { type, coords: { lat: p.coords.latitude, lon: p.coords.longitude } });
-        }, () => alert("GPS REQUERIDO"), { enableHighAccuracy: true });
-    }
-
-    function playEmergencyTone() {
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.type = 'sawtooth'; osc.frequency.value = 880;
-        g.gain.value = 0.1; osc.connect(g); g.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.5);
     }
 
     function sendMsg() {
@@ -249,12 +209,11 @@
         if(i.value.trim()){ socket.emit('chat-message', i.value); i.value = ""; }
     }
 
-    // --- LIMPIEZA TOTAL DE RAM AL SALIR ---
-    window.addEventListener('pagehide', () => {
-        if(socket) socket.disconnect();
-        audioBlobs.forEach(url => URL.revokeObjectURL(url));
-        document.body.innerHTML = "";
-    });
+    function triggerAlert(type) {
+        navigator.geolocation.getCurrentPosition(p => {
+            socket.emit('send-alert', { type, coords: { lat: p.coords.latitude, lon: p.coords.longitude } });
+        }, null, { enableHighAccuracy: true });
+    }
 </script>
 </body>
 </html>
