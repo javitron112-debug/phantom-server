@@ -3,43 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PHANTOM V22.3 | TACTICAL</title>
+    <title>PHANTOM V22.5 | TACTICAL PERSISTENCE</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <style>
         :root { --neon: #00ff41; --sos: #ff3131; --ptt: #ff8c00; --rx: #0088ff; --bg: #050508; }
         body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
-        
         .app-shell { flex: 1; display: flex; flex-direction: column; padding: 15px; padding-bottom: 90px; box-sizing: border-box; }
-        
         header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
-        
-        /* Desplegable de Usuarios */
         .user-menu { position: relative; }
-        #user-list-btn { background: #111; color: var(--neon); border: 1px solid #333; padding: 5px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; }
-        #user-dropdown { position: absolute; right: 0; top: 30px; background: #111; border: 1px solid var(--neon); padding: 10px; border-radius: 8px; z-index: 100; display: none; min-width: 150px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
-
-        #status-led { width: 10px; height: 10px; border-radius: 50%; background: #333; }
+        #user-list-btn { background: #111; color: var(--neon); border: 1px solid #333; padding: 5px 10px; border-radius: 5px; font-size: 11px; }
+        #user-dropdown { position: absolute; right: 0; top: 30px; background: #111; border: 1px solid var(--neon); padding: 10px; border-radius: 8px; z-index: 100; display: none; min-width: 150px; }
+        #status-led { width: 10px; height: 10px; border-radius: 50%; background: #333; transition: 0.3s; }
         .led-tx { background: var(--sos) !important; box-shadow: 0 0 10px var(--sos); }
         .led-rx { background: var(--rx) !important; box-shadow: 0 0 10px var(--rx); }
-
         .emergency-tools { display: flex; gap: 10px; margin: 10px 0; }
-        .btn-alert { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; }
+        .btn-alert { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; color: white; }
         #sos-btn { background: var(--sos); }
-        
-        /* Botón Grabación Ráfaga */
-        #replay-btn { background: #333; color: white; border: 1px solid #555; padding: 12px; border-radius: 8px; font-weight: bold; }
-
+        #replay-btn { background: #222; color: white; border: 1px solid #444; border-radius: 8px; font-weight: bold; }
         #chat { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; border: 1px solid #111; margin-bottom: 10px; display: flex; flex-direction: column; max-height: 40vh; }
         .msg { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--neon); font-size: 12px; position: relative; }
         .msg-time { position: absolute; right: 8px; top: 8px; font-size: 9px; color: #555; }
-        
-        #talk-btn { width: 100%; padding: 40px 0; border-radius: 20px; border: 2px solid #333; background: #111; color: #444; font-weight: 900; font-size: 20px; touch-action: none; margin: 10px 0; }
+        #talk-btn { width: 100%; padding: 40px 0; border-radius: 20px; border: 2px solid #333; background: #111; color: #444; font-weight: 900; font-size: 20px; touch-action: none; }
         #talk-btn.ready { background: var(--ptt); color: black; }
         #talk-btn.active { background: var(--sos); color: white; }
-
         .input-area { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; gap: 8px; padding: 15px; background: #000; border-top: 1px solid #222; box-sizing: border-box; }
         #msg-in { background: #111; border: 1px solid #333; color: var(--neon); padding: 12px; border-radius: 10px; flex: 1; outline: none; }
-
         #auth-overlay { position: fixed; inset: 0; background: #000; display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .card { background: #0a0a0a; padding: 25px; border-radius: 25px; border: 1px solid var(--neon); width: 85%; max-width: 380px; }
         .card input { width: 100%; padding: 12px; margin-bottom: 10px; background: #000; border: 1px solid #333; color: white; border-radius: 8px; }
@@ -49,12 +37,13 @@
 
 <div id="auth-overlay">
     <form class="card" onsubmit="event.preventDefault(); startEnlace();">
-        <h2 style="color: var(--neon); text-align: center;">PHANTOM V22.3</h2>
-        <input type="text" id="url-in" placeholder="URL RENDER (HTTPS)" required>
+        <h2 style="color: var(--neon); text-align: center;">PHANTOM V22.5</h2>
+        <input type="text" id="url-in" placeholder="URL SERVER" required>
         <input type="text" id="nick-in" placeholder="ID OPERADOR" required>
         <input type="text" id="room-in" placeholder="CANAL" required>
         <input type="password" id="pass-in" placeholder="PASSWORD E2EE" required>
-        <button type="submit" style="width:100%; padding:15px; background:var(--neon); border:none; border-radius:10px; font-weight:bold;">CONECTAR</button>
+        <button type="submit" style="width:100%; padding:15px; background:var(--neon); border:none; border-radius:10px; font-weight:bold;">ACTIVAR ENLACE</button>
+        <p style="font-size: 9px; color: #555; text-align: center; margin-top: 10px;">V22.5: WAKE-LOCK & BG-PERSISTENCE ENABLED</p>
     </form>
 </div>
 
@@ -66,14 +55,12 @@
             <div id="user-dropdown"></div>
         </div>
     </header>
-    
     <div class="emergency-tools">
         <button id="sos-btn" class="btn-alert" onclick="triggerAlert('SOS')">🚨 SOS GLOBAL</button>
         <button id="replay-btn" onclick="replayLastAudio()">🔄 RÁFAGA (5s)</button>
     </div>
-
     <div id="chat"></div>
-    <button id="talk-btn" disabled>ESPERANDO...</button>
+    <button id="talk-btn" disabled>SINTONIZANDO...</button>
 </div>
 
 <div class="input-area">
@@ -82,32 +69,57 @@
 </div>
 
 <script>
-    let socket, audioCtx, cryptoKey, mediaRecorder, stream, myNick, btn;
-    let audioHistory = []; // Buffer para ráfaga
+    let socket, audioCtx, cryptoKey, mediaRecorder, stream, myNick, btn, wakeLock = null;
+    let audioHistory = [];
 
-    // --- SONIDOS ---
+    // --- 1. PERSISTENCIA DE FONDO (SILENCIO INFINITO) ---
+    function enableBackgroundAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        gain.gain.value = 0; // Inaudible
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        console.log("Audio de fondo activado para evitar suspensión.");
+    }
+
+    // --- 2. WAKE LOCK (PANTALLA SIEMPRE ENCENDIDA) ---
+    async function requestWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                wakeLock = await navigator.wakeLock.request('screen');
+                console.log("Wake Lock activo.");
+                wakeLock.addEventListener('release', () => console.log("Wake Lock liberado."));
+            } catch (err) { console.error(`${err.name}, ${err.message}`); }
+        }
+    }
+
+    // Reactivar Wake Lock al volver a la pestaña
+    document.addEventListener('visibilitychange', () => {
+        if (wakeLock !== null && document.visibilityState === 'visible') requestWakeLock();
+    });
+
+    // --- SONIDOS TÁCTICOS ---
     function playRogerBeep() {
-        if (!audioCtx) return;
         const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
         o.type = 'sine'; o.frequency.setValueAtTime(1000, audioCtx.currentTime);
-        g.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        g.gain.setValueAtTime(0.05, audioCtx.currentTime);
         g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
         o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.1);
     }
 
     function playEmergencySiren() {
-        if (!audioCtx) audioCtx = new AudioContext();
         const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-        o.type = 'sawtooth';
-        o.frequency.setValueAtTime(440, audioCtx.currentTime);
+        o.type = 'sawtooth'; o.frequency.setValueAtTime(440, audioCtx.currentTime);
         o.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 0.3);
         o.frequency.linearRampToValueAtTime(440, audioCtx.currentTime + 0.6);
-        g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        g.gain.setValueAtTime(0.2, audioCtx.currentTime);
         g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
         o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.6);
     }
 
-    // --- LÓGICA ---
+    // --- CORE ---
     async function deriveKey(p) {
         const enc = new TextEncoder();
         const bk = await crypto.subtle.importKey("raw", enc.encode(p), "PBKDF2", false, ["deriveKey"]);
@@ -122,6 +134,9 @@
 
         socket.on('connect', () => {
             socket.emit('join-room', { roomName: document.getElementById('room-in').value, nickname: myNick });
+            // Activar persistencia tras interacción
+            enableBackgroundAudio();
+            requestWakeLock();
         });
 
         socket.on('joined-success', () => {
@@ -132,8 +147,6 @@
 
     function setupApp() {
         btn = document.getElementById('talk-btn');
-        audioCtx = new AudioContext();
-
         socket.on('user-list', list => {
             document.getElementById('user-list-btn').innerText = `OPERADORES: ${list.length} ▾`;
             document.getElementById('user-dropdown').innerHTML = list.map(u => `<div style="padding:5px; font-size:10px; border-bottom:1px solid #222;">● ${u}</div>`).join('');
@@ -149,31 +162,24 @@
         socket.on('channel-free', () => {
             btn.disabled = false; btn.innerText = "PULSAR PARA HABLAR";
             btn.classList.add('ready');
-            document.getElementById('status-led').classList.remove('led-rx');
-            document.getElementById('status-led').classList.remove('led-tx');
+            document.getElementById('status-led').classList.remove('led-rx', 'led-tx');
         });
 
-        socket.on('chat-message', d => {
-            addMessage(`<b>${d.user}:</b> ${d.text}`, d.time);
-        });
+        socket.on('chat-message', d => addMessage(`<b>${d.user}:</b> ${d.text}`, d.time));
 
         socket.on('incoming-alert', d => {
-            playEmergencySiren(); // SUENA EN TODOS
+            playEmergencySiren();
             const isSOS = d.type === 'SOS';
             const map = `http://google.com/maps?q=${d.coords.lat},${d.coords.lon}`;
-            addMessage(`<b style="color:var(--sos)">${isSOS ? '🚨 SOS' : '📍 POS'} DE ${d.user}</b><br><a href="${map}" target="_blank" style="color:var(--neon)">UBICACIÓN GPS</a>`, d.time);
+            addMessage(`<b style="color:var(--sos)">${isSOS ? '🚨 SOS' : '📍 POS'} DE ${d.user}</b><br><a href="${map}" target="_blank" style="color:var(--neon)">MAPA GPS</a>`, d.time);
         });
 
         socket.on('audio-stream', async d => {
             try {
                 const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(d.iv) }, cryptoKey, new Uint8Array(d.ciphertext));
-                const blob = new Blob([dec], { type: 'audio/webm' });
-                const url = URL.createObjectURL(blob);
-                
-                // Guardar en ráfaga (mantenemos las últimas 5 ráfagas)
+                const url = URL.createObjectURL(new Blob([dec], { type: 'audio/webm' }));
                 audioHistory.push(url);
                 if(audioHistory.length > 5) audioHistory.shift();
-
                 new Audio(url).play();
             } catch(e) {}
         });
@@ -249,10 +255,7 @@
     }
 
     function replayLastAudio() {
-        if(audioHistory.length > 0) {
-            const last = audioHistory[audioHistory.length - 1];
-            new Audio(last).play();
-        }
+        if(audioHistory.length > 0) new Audio(audioHistory[audioHistory.length - 1]).play();
     }
 </script>
 </body>
