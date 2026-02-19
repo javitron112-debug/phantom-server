@@ -1,51 +1,53 @@
 📻 PHANTOM V22.3 | Tactical Web Radio
-PHANTOM es una prueba de concepto (PoC) de una radio táctica basada en web que utiliza tecnología WebRTC (Audio API) y Socket.io para comunicaciones de voz efícies y seguras. Diseñada para ser efímera, no deja rastro de datos en disco y opera totalmente en la memoria volátil (RAM).
+PHANTOM es una plataforma de comunicación táctica basada en web que utiliza WebRTC y Socket.io para transmisiones de voz seguras y eficientes en tiempo real. Este sistema ha sido diseñado bajo el principio de Privacidad por Diseño, operando exclusivamente en memoria volátil para garantizar comunicaciones efímeras.
 
-🛡️ Características de Seguridad
-Cifrado de Grado Militar: Utiliza AES-GCM de 256 bits para el audio y los mensajes.
+🛡️ Seguridad y Cifrado
+E2EE (End-to-End Encryption): Todo el audio y texto se cifra en el dispositivo emisor y se descifra en el receptor.
 
-Derivación de Clave Robusta: Implementa PBKDF2 con 600,000 iteraciones y hash SHA-512, lo que hace que los ataques de fuerza bruta sean computacionalmente inviables.
+Algoritmo AES-GCM: Utiliza cifrado de 256 bits para garantizar la integridad y confidencialidad.
 
-Comunicaciones Efímeras: Todo el historial de chat, coordenadas GPS y fragmentos de audio se almacenan en RAM volátil. Al cerrar la pestaña o el navegador, la información desaparece.
+Derivación SHA-512: Las claves se generan mediante PBKDF2 con 600,000 iteraciones, haciendo el sistema resistente a ataques de fuerza bruta.
 
-Protección Anti-DDoS: Sistema de baneo automático por IP integrado en el servidor para prevenir inundaciones de paquetes (Flood).
+Zero Persistence: No se utiliza ninguna base de datos. Al cerrar la sesión, toda la información de la RAM es purgada automáticamente.
 
-Privacidad Total: Sin bases de datos. El servidor actúa únicamente como un repetidor (Relay) de paquetes cifrados.
+Protección Perimetral: El servidor incluye un sistema de baneo automático por IP ante intentos de ataques DoS.
 
-🚀 Funcionalidades Tácticas
-PTT (Push-to-Talk): Sistema de medio dúplex con bloqueo de canal automático cuando alguien está transmitiendo.
+🚀 Funciones Operativas
+PTT (Push-to-Talk): Control de flujo de voz medio-dúplex con indicadores visuales de estado (TX/RX).
 
-Botón SOS Emergencia: Envía una alerta visual y sonora a todo el equipo, bloquea el canal para prioridad absoluta y comparte la ubicación GPS en tiempo real con enlace directo a Google Maps.
+Alerta SOS Prioritaria: Activación de alarma sonora global, bloqueo del canal para emergencia y envío de coordenadas GPS con enlace directo a mapas.
 
-Localización GPS: Envío manual de coordenadas para reportes de posición.
+Reporte de Posición: Envío rápido de ubicación actual sin activar alarma de emergencia.
 
-Auto-Configuración por QR: Genera un código QR que contiene la URL del servidor codificada, facilitando el despliegue rápido entre miembros del equipo.
+Auto-Configuración QR: Generador de códigos QR que pre-configuran la URL del servidor para facilitar el despliegue a nuevos operadores.
 
-Optimizado para Móvil: Interfaz diseñada para evitar zooms accidentales y barra de escritura fija sobre el teclado táctil.
+Contador de Operadores: Visualización en tiempo real del número de usuarios activos en la frecuencia.
 
-🛠️ Instalación y Despliegue
+🛠️ Guía de Despliegue
 1. Servidor (Backend)
-Diseñado para ser desplegado en Render, Heroku o cualquier servidor Node.js.
+Ideal para alojar en Render.com:
 
-Sube los archivos server.js y package.json a tu repositorio.
+Crea un repositorio privado con server.js y package.json.
 
-En Render, crea un Web Service.
+En Render, crea un Web Service conectado a ese repositorio.
 
-Asegúrate de configurar la variable de entorno NODE_VERSION en 18.0.0 o superior.
+Configura el Start Command como: node server.js.
 
 2. Cliente (Frontend)
-Diseñado para GitHub Pages.
+Ideal para alojar en GitHub Pages:
 
-Sube el archivo index.html a un repositorio con GitHub Pages activo.
+Sube el archivo index.html a tu repositorio.
 
-Accede a la URL generada, introduce la URL de tu servidor en Render y ¡listo!
+Activa GitHub Pages en los ajustes del repositorio.
 
-📱 Uso Operativo
-Enlace: Al abrir la web, introduce la URL del servidor, tu ID de operador y la clave del canal (E2EE).
+Accede a la URL, ingresa los datos de conexión y genera un QR para tu equipo.
 
-QR: Usa el botón "Generar QR" para que otros miembros se unan sin tener que escribir manualmente la dirección del servidor.
+🔍 Solución de Problemas (Troubleshooting)
+¿No se escucha el audio? Verifica que la contraseña E2EE sea idéntica en todos los dispositivos. Un solo carácter diferente impedirá el descifrado.
 
-Comunicación: Mantén presionado el botón central para transmitir. El LED pasará a Rojo (TX). Si ves el LED en Azul (RX), el canal está ocupado.
+¿El botón PTT no responde? Asegúrate de estar usando una conexión HTTPS. Los navegadores bloquean el acceso al micrófono en sitios no seguros.
 
-⚠️ Descargo de Responsabilidad
-Este software es una herramienta experimental con fines educativos y de prueba de concepto. El autor no se hace responsable del uso indebido de esta herramienta.
+¿Error de conexión en móvil? El servidor en Render puede "dormirse" tras 15 minutos de inactividad. Espera 30 segundos a que despierte en el primer acceso.
+
+⚠️ Aviso Legal
+Este proyecto es una Prueba de Concepto (PoC) con fines educativos. El uso de este sistema en entornos críticos queda bajo responsabilidad del usuario final.
