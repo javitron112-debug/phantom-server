@@ -1,4 +1,73 @@
-⚡ PHANTOM V22.3 | Tactical Radio & E2EE Relay ⚡PHANTOM es un ecosistema de comunicación crítica basado en la web. No es solo un chat de voz; es una herramienta de coordinación diseñada para ser invisible, efímera y robusta.🛠️ Especificaciones de Grado Operativo🔒 Criptografía y PrivacidadEnd-to-End Encryption (E2EE): Cifrado en el cliente mediante AES-GCM de 256 bits.Hardened Key Derivation: Claves generadas con PBKDF2 (600,000 iteraciones) y SHA-512.Memoria Volátil: Diseñado para no persistir. Cero bases de datos, cero logs de mensajes, cero rastro en disco.Protección Anti-DoS: Algoritmo de baneo por IP integrado para neutralizar ataques de denegación de servicio.📡 Capacidades TácticasPTT Dinámico: Control de canal medio-dúplex con indicadores de estado LED (TX/RX).Protocolo SOS: Alerta de emergencia con prioridad de canal y geolocalización GPS inmediata.Configuración Relámpago: Despliegue masivo mediante Códigos QR auto-configurables que pre-cargan la URL del servidor.Sanitización de Datos: Filtrado de inyecciones XSS para mantener la integridad del terminal.📐 Arquitectura del SistemaLa arquitectura se divide en dos capas desacopladas para maximizar la resiliencia:El Cerebro (Backend): Alojado en Render, gestiona el tráfico de paquetes cifrados sin conocer su contenido.La Interfaz (Frontend): Alojada en GitHub Pages, sirve la lógica de cifrado y la interfaz de usuario.🚀 Guía de Despliegue Rápido1️⃣ Clonar e Instalar ServidorBashgit clone https://github.com/tu-usuario/phantom-server
-npm install
-node server.js
-Súbelo a Render y configura el puerto dinámico.2️⃣ Configurar ClienteSube el index.html a tu hosting estático. Al entrar por primera vez:Introduce la URL de tu servidor.Genera un QR Táctico.Comparte el QR con tu equipo para una sincronización instantánea.🛠️ Solución de Problemas (Troubleshooting)ProblemaCausa ProbableSoluciónSin AudioDesajuste de clave E2EEVerificar que todos usen el mismo Password.Error GPSPermisos denegadosActivar permisos de ubicación en el navegador.PTT BloqueadoCanal ocupado (RX)Esperar a que el LED de estado vuelva a gris.Violation ErrorEventos pasivosEl código ya incluye el parche { passive: false }.⚖️ Descargo de Responsabilidad (Disclaimer)ATENCIÓN: Este software es una Prueba de Concepto. Aunque emplea estándares de cifrado elevados, su uso en misiones críticas queda bajo la total responsabilidad del operador. No se garantiza la disponibilidad del servicio si se utiliza el tier gratuito de Render.
+================================================================================
+    ____  __  __ ___     _   __ ______ ____   __  ___  _   __  ____   ____
+   / __ \/ / / //   |   / | / //_  __// __ \ /  |/  / | | / / /__  \ /__  \
+  / /_/ / /_/ // /| |  /  |/ /  / /  / / / // /|_/ /  | |/ /    /  /   /  /
+ / ____/ __  // ___ | / /|  /  / /  / /_/ // /  / /   |   /    /  /   /  /
+/_/   /_/ /_//_/  |_|/_/ |_/  /_/   \____//_/  /_/    |_/    /____/ /____/
+
+                           SISTEMA DE RADIO TÁCTICA v22.3
+                      [ CIFRADO E2EE | MEMORIA VOLÁTIL | PTT ]
+================================================================================
+
+1. DESCRIPCIÓN DEL PROYECTO
+--------------------------------------------------------------------------------
+PHANTOM es una plataforma de comunicación crítica basada en web diseñada para ser
+efímera e invisible. Utiliza tecnología de vanguardia para garantizar que las
+comunicaciones sean seguras y no dejen rastro digital.
+
+>> ESTADO: OPERATIVO [LIVE]
+>> PROTOCOLO: AES-GCM 256-bit + PBKDF2 (600k Iteraciones)
+>> ALMACENAMIENTO: 0% PERSISTENCIA (Sólo RAM)
+
+2. ESPECIFICACIONES TÉCNICAS
+--------------------------------------------------------------------------------
+[+] SEGURIDAD:
+    - Cifrado de extremo a extremo (E2EE) en el dispositivo del cliente.
+    - Derivación de clave mediante SHA-512 (Resistente a fuerza bruta).
+    - Protección Anti-DDoS con sistema de baneo por IP en el servidor.
+
+[+] FUNCIONALIDADES:
+    - PTT (Push-to-Talk) con bloqueo automático de canal (Half-Duplex).
+    - Botón SOS: Alarma sonora + Bloqueo de Prioridad + GPS en tiempo real.
+    - Localización: Envío manual de coordenadas tácticas.
+    - QR Config: Generación de acceso rápido con URL de servidor integrada.
+
+3. ARQUITECTURA DEL SISTEMA
+--------------------------------------------------------------------------------
+Este sistema opera de forma desacoplada para máxima resiliencia:
+
+[ CLIENTE (GitHub Pages) ] <---- (Túnel Cifrado) ----> [ SERVIDOR (Render) ]
+        |                                                   |
+        |--- Cifra Audio/Texto                              |--- Distribuye Paquetes
+        |--- Gestiona GPS                                   |--- Controla Usuarios
+        |--- Genera QR                                      |--- Filtra Ataques DoS
+
+4. GUÍA DE DESPLIEGUE RÁPIDO
+--------------------------------------------------------------------------------
+[ PASO 01 ] - BACKEND:
+    Sube 'server.js' y 'package.json' a un repositorio privado. Despliega en 
+    Render.com como "Web Service". Configura NODE_VERSION >= 18.0.0.
+
+[ PASO 02 ] - FRONTEND:
+    Sube 'index.html' a GitHub Pages. Asegúrate de que la URL de conexión en 
+    el código apunte a tu nueva instancia de Render.
+
+[ PASO 03 ] - ACCESO:
+    Entra a la URL de GitHub Pages, ingresa la URL de Render y genera un QR 
+    táctico para distribuir la configuración a tu equipo de forma automática.
+
+5. SOLUCIÓN DE PROBLEMAS (TROUBLESHOOTING)
+--------------------------------------------------------------------------------
+* ¿ERROR DE AUDIO?   -> Verificar que el Password sea idéntico en el equipo.
+* ¿EL BOTÓN NO VA?   -> Asegúrate de estar usando protocolo HTTPS.
+* ¿NO CONECTA?       -> El servidor gratuito de Render puede tardar 30s en despertar.
+* ¿PÉRDIDA DE DATOS? -> El sistema borra todo al cerrar la pestaña por diseño.
+
+6. NOTAS LEGALES
+--------------------------------------------------------------------------------
+Este software es una Prueba de Concepto (PoC) con fines educativos. El uso de 
+este sistema en misiones reales es bajo responsabilidad del operador.
+
+================================================================================
+             SISTEMA PHANTOM - DESARROLLADO PARA OPERACIONES SEGURAS
+================================================================================
