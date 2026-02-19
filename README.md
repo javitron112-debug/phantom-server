@@ -1,73 +1,197 @@
-================================================================================
-    ____  __  __ ___     _   __ ______ ____   __  ___  _   __  ____   ____
-   / __ \/ / / //   |   / | / //_  __// __ \ /  |/  / | | / / /__  \ /__  \
-  / /_/ / /_/ // /| |  /  |/ /  / /  / / / // /|_/ /  | |/ /    /  /   /  /
- / ____/ __  // ___ | / /|  /  / /  / /_/ // /  / /   |   /    /  /   /  /
-/_/   /_/ /_//_/  |_|/_/ |_/  /_/   \____//_/  /_/    |_/    /____/ /____/
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>PHANTOM V22.3 | Tactical Documentation</title>
+    <style>
+        :root {
+            --neon: #00ff41;
+            --bg: #0a0b0d;
+            --panel: #14171c;
+            --border: #20252e;
+            --text: #a0aab8;
+        }
 
-                           SISTEMA DE RADIO TÁCTICA v22.3
-                      [ CIFRADO E2EE | MEMORIA VOLÁTIL | PTT ]
-================================================================================
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
 
-1. DESCRIPCIÓN DEL PROYECTO
---------------------------------------------------------------------------------
-PHANTOM es una plataforma de comunicación crítica basada en web diseñada para ser
-efímera e invisible. Utiliza tecnología de vanguardia para garantizar que las
-comunicaciones sean seguras y no dejen rastro digital.
+        .terminal {
+            max-width: 900px;
+            margin: 0 auto;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            box-shadow: 0 0 30px rgba(0, 255, 65, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
 
->> ESTADO: OPERATIVO [LIVE]
->> PROTOCOLO: AES-GCM 256-bit + PBKDF2 (600k Iteraciones)
->> ALMACENAMIENTO: 0% PERSISTENCIA (Sólo RAM)
+        .top-bar {
+            background: var(--border);
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
 
-2. ESPECIFICACIONES TÉCNICAS
---------------------------------------------------------------------------------
-[+] SEGURIDAD:
-    - Cifrado de extremo a extremo (E2EE) en el dispositivo del cliente.
-    - Derivación de clave mediante SHA-512 (Resistente a fuerza bruta).
-    - Protección Anti-DDoS con sistema de baneo por IP en el servidor.
+        .dots { display: flex; gap: 8px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; background: #333; }
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
 
-[+] FUNCIONALIDADES:
-    - PTT (Push-to-Talk) con bloqueo automático de canal (Half-Duplex).
-    - Botón SOS: Alarma sonora + Bloqueo de Prioridad + GPS en tiempo real.
-    - Localización: Envío manual de coordenadas tácticas.
-    - QR Config: Generación de acceso rápido con URL de servidor integrada.
+        .content { padding: 30px; }
 
-3. ARQUITECTURA DEL SISTEMA
---------------------------------------------------------------------------------
-Este sistema opera de forma desacoplada para máxima resiliencia:
+        h1 {
+            color: var(--neon);
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 5px;
+            margin-bottom: 0;
+            text-shadow: 0 0 10px rgba(0, 255, 65, 0.5);
+        }
 
-[ CLIENTE (GitHub Pages) ] <---- (Túnel Cifrado) ----> [ SERVIDOR (Render) ]
-        |                                                   |
-        |--- Cifra Audio/Texto                              |--- Distribuye Paquetes
-        |--- Gestiona GPS                                   |--- Controla Usuarios
-        |--- Genera QR                                      |--- Filtra Ataques DoS
+        .subtitle {
+            text-align: center;
+            font-size: 0.9em;
+            color: #555;
+            margin-bottom: 40px;
+        }
 
-4. GUÍA DE DESPLIEGUE RÁPIDO
---------------------------------------------------------------------------------
-[ PASO 01 ] - BACKEND:
-    Sube 'server.js' y 'package.json' a un repositorio privado. Despliega en 
-    Render.com como "Web Service". Configura NODE_VERSION >= 18.0.0.
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
 
-[ PASO 02 ] - FRONTEND:
-    Sube 'index.html' a GitHub Pages. Asegúrate de que la URL de conexión en 
-    el código apunte a tu nueva instancia de Render.
+        .box {
+            border: 1px solid var(--border);
+            padding: 20px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 4px;
+        }
 
-[ PASO 03 ] - ACCESO:
-    Entra a la URL de GitHub Pages, ingresa la URL de Render y genera un QR 
-    táctico para distribuir la configuración a tu equipo de forma automática.
+        h2 {
+            color: var(--neon);
+            font-size: 1.1em;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
 
-5. SOLUCIÓN DE PROBLEMAS (TROUBLESHOOTING)
---------------------------------------------------------------------------------
-* ¿ERROR DE AUDIO?   -> Verificar que el Password sea idéntico en el equipo.
-* ¿EL BOTÓN NO VA?   -> Asegúrate de estar usando protocolo HTTPS.
-* ¿NO CONECTA?       -> El servidor gratuito de Render puede tardar 30s en despertar.
-* ¿PÉRDIDA DE DATOS? -> El sistema borra todo al cerrar la pestaña por diseño.
+        ul { list-style: none; padding: 0; }
+        li { margin-bottom: 10px; position: relative; padding-left: 20px; }
+        li::before { content: ">"; position: absolute; left: 0; color: var(--neon); }
 
-6. NOTAS LEGALES
---------------------------------------------------------------------------------
-Este software es una Prueba de Concepto (PoC) con fines educativos. El uso de 
-este sistema en misiones reales es bajo responsabilidad del operador.
+        .tag {
+            background: var(--neon);
+            color: black;
+            padding: 2px 8px;
+            font-weight: bold;
+            font-size: 0.8em;
+            border-radius: 3px;
+            margin-right: 5px;
+        }
 
-================================================================================
-             SISTEMA PHANTOM - DESARROLLADO PARA OPERACIONES SEGURAS
-================================================================================
+        code {
+            background: #000;
+            color: #efefef;
+            padding: 15px;
+            display: block;
+            border-radius: 4px;
+            border-left: 3px solid var(--neon);
+            margin: 10px 0;
+            font-size: 0.9em;
+        }
+
+        .warning {
+            border: 1px solid #ff3131;
+            color: #ff8a8a;
+            padding: 15px;
+            border-radius: 4px;
+            background: rgba(255, 49, 49, 0.05);
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8em;
+            color: #444;
+            border-top: 1px solid var(--border);
+        }
+    </style>
+</head>
+<body>
+
+<div class="terminal">
+    <div class="top-bar">
+        <div class="dots">
+            <div class="dot red"></div>
+            <div class="dot yellow"></div>
+            <div class="dot green"></div>
+        </div>
+        <div style="font-size: 10px; color: #666;">PHANTOM_OS_v22.3.sys</div>
+    </div>
+
+    <div class="content">
+        <h1>PHANTOM V22.3</h1>
+        <div class="subtitle">SISTEMA DE COMUNICACIÓN TÁCTICA E2EE</div>
+
+        <div class="grid">
+            <div class="box">
+                <h2>🛡️ SEGURIDAD</h2>
+                <ul>
+                    <li><span class="tag">AES-GCM</span> Cifrado de 256 bits</li>
+                    <li><span class="tag">SHA-512</span> Derivación de clave</li>
+                    <li><span class="tag">600K</span> Iteraciones PBKDF2</li>
+                    <li><span class="tag">RAM</span> 0% persistencia en disco</li>
+                </ul>
+            </div>
+            <div class="box">
+                <h2>🚀 CAPACIDADES</h2>
+                <ul>
+                    <li>PTT (Push-To-Talk) Half-Duplex</li>
+                    <li>Protocolo SOS con GPS activo</li>
+                    <li>Auto-configuración vía QR</li>
+                    <li>Anti-DDoS con baneo por IP</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="box" style="margin-bottom: 20px;">
+            <h2>🛠️ DESPLIEGUE RÁPIDO</h2>
+            <p>1. Despliega el servidor en <strong>Render.com</strong>:</p>
+            <code>npm install && node server.js</code>
+            <p>2. Sube el cliente a <strong>GitHub Pages</strong> y enlaza la URL generada.</p>
+        </div>
+
+        <div class="box" style="margin-bottom: 20px;">
+            <h2>🔍 SOLUCIÓN DE PROBLEMAS</h2>
+            <ul>
+                <li><strong>¿Sin audio?</strong> Verifica que la clave E2EE coincida.</li>
+                <li><strong>¿Error Micro/GPS?</strong> Requiere conexión <strong>HTTPS</strong>.</li>
+                <li><strong>¿No conecta?</strong> Render tarda 30s en "despertar" el tier gratuito.</li>
+            </ul>
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ AVISO OPERATIVO:</strong> Este sistema es una Prueba de Concepto (PoC). El borrado de datos es instantáneo al cerrar la pestaña por diseño de seguridad.
+        </div>
+    </div>
+
+    <footer>
+        &copy; 2026 PHANTOM TACTICAL - COMUNICACIONES EFÍMERAS
+    </footer>
+</div>
+
+</body>
+</html>
