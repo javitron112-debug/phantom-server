@@ -5,14 +5,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>PHANTOM V22.3 | TACTICAL</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --neon: #00ff41; --sos: #ff3131; --ptt: #ff8c00; --rx: #0088ff; --bg: #050508; }
         body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         
         .app-shell { flex: 1; display: flex; flex-direction: column; padding: 15px; padding-bottom: 90px; box-sizing: border-box; }
         
-        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; font-size: 11px; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
+        
+        /* Desplegable de Usuarios */
+        .user-menu { position: relative; }
+        #user-list-btn { background: #111; color: var(--neon); border: 1px solid #333; padding: 5px 10px; border-radius: 5px; font-size: 11px; cursor: pointer; }
+        #user-dropdown { position: absolute; right: 0; top: 30px; background: #111; border: 1px solid var(--neon); padding: 10px; border-radius: 8px; z-index: 100; display: none; min-width: 150px; box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+
         #status-led { width: 10px; height: 10px; border-radius: 50%; background: #333; }
         .led-tx { background: var(--sos) !important; box-shadow: 0 0 10px var(--sos); }
         .led-rx { background: var(--rx) !important; box-shadow: 0 0 10px var(--rx); }
@@ -20,151 +25,123 @@
         .emergency-tools { display: flex; gap: 10px; margin: 10px 0; }
         .btn-alert { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; }
         #sos-btn { background: var(--sos); }
-        #loc-btn { background: var(--rx); }
+        
+        /* Botón Grabación Ráfaga */
+        #replay-btn { background: #333; color: white; border: 1px solid #555; padding: 12px; border-radius: 8px; font-weight: bold; }
 
-        /* SCROLL FIX: Contenedor con altura controlada y flujo corregido */
-        #chat { 
-            flex: 1; 
-            overflow-y: auto; 
-            background: rgba(0,0,0,0.4); 
-            border-radius: 10px; 
-            padding: 10px; 
-            border: 1px solid #111; 
-            margin-bottom: 10px;
-            display: flex;
-            flex-direction: column;
-            max-height: 45vh; 
-        }
-
-        .msg { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--neon); font-size: 12px; word-break: break-word; }
+        #chat { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; border: 1px solid #111; margin-bottom: 10px; display: flex; flex-direction: column; max-height: 40vh; }
+        .msg { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--neon); font-size: 12px; position: relative; }
+        .msg-time { position: absolute; right: 8px; top: 8px; font-size: 9px; color: #555; }
         
         #talk-btn { width: 100%; padding: 40px 0; border-radius: 20px; border: 2px solid #333; background: #111; color: #444; font-weight: 900; font-size: 20px; touch-action: none; margin: 10px 0; }
-        #talk-btn.ready { background: var(--ptt); color: black; border-color: var(--ptt); }
+        #talk-btn.ready { background: var(--ptt); color: black; }
         #talk-btn.active { background: var(--sos); color: white; }
 
         .input-area { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; gap: 8px; padding: 15px; background: #000; border-top: 1px solid #222; box-sizing: border-box; }
         #msg-in { background: #111; border: 1px solid #333; color: var(--neon); padding: 12px; border-radius: 10px; flex: 1; outline: none; }
 
-        #auth-overlay { position: fixed; inset: 0; background: #000; display: flex; justify-content: center; align-items: center; z-index: 1000; overflow-y: auto; }
+        #auth-overlay { position: fixed; inset: 0; background: #000; display: flex; justify-content: center; align-items: center; z-index: 1000; }
         .card { background: #0a0a0a; padding: 25px; border-radius: 25px; border: 1px solid var(--neon); width: 85%; max-width: 380px; }
-        .card input { width: 100%; padding: 12px; margin-bottom: 10px; background: #000; border: 1px solid #333; color: white; border-radius: 8px; box-sizing: border-box; }
-        #qr-container { display: flex; flex-direction: column; align-items: center; margin-top: 20px; padding: 15px; background: white; border-radius: 15px; display: none; }
-        #qr-container p { color: black; font-size: 10px; margin-top: 8px; font-weight: bold; text-align: center; }
+        .card input { width: 100%; padding: 12px; margin-bottom: 10px; background: #000; border: 1px solid #333; color: white; border-radius: 8px; }
     </style>
 </head>
 <body>
 
 <div id="auth-overlay">
     <form class="card" onsubmit="event.preventDefault(); startEnlace();">
-        <h2 style="color: var(--neon); text-align: center; margin-top:0;">PHANTOM V22.3</h2>
+        <h2 style="color: var(--neon); text-align: center;">PHANTOM V22.3</h2>
         <input type="text" id="url-in" placeholder="URL RENDER (HTTPS)" required>
         <input type="text" id="nick-in" placeholder="ID OPERADOR" required>
-        <input type="text" id="room-in" placeholder="CANAL TÁCTICO" required>
+        <input type="text" id="room-in" placeholder="CANAL" required>
         <input type="password" id="pass-in" placeholder="PASSWORD E2EE" required>
-        <button type="submit" style="width:100%; padding:15px; background:var(--neon); border:none; border-radius:10px; font-weight:bold; cursor:pointer; color:black;">CONECTAR</button>
-        <div id="qr-container"><div id="qrcode"></div><p>COMPARTE ACCESO</p></div>
-        <button type="button" onclick="generateTacticalQR()" id="gen-qr-btn" style="width:100%; margin-top:15px; background:transparent; border:1px solid #444; color:#666; padding:8px; border-radius:8px; font-size:10px;">GENERAR QR AUTO-CONFIG</button>
+        <button type="submit" style="width:100%; padding:15px; background:var(--neon); border:none; border-radius:10px; font-weight:bold;">CONECTAR</button>
     </form>
 </div>
 
 <div class="app-shell">
     <header>
         <div id="status-led"></div>
-        <span id="user-count">USUARIOS: 0</span>
+        <div class="user-menu">
+            <button id="user-list-btn" onclick="toggleUsers()">OPERADORES: 0 ▾</button>
+            <div id="user-dropdown"></div>
+        </div>
     </header>
+    
     <div class="emergency-tools">
-        <button id="sos-btn" class="btn-alert" onclick="triggerAlert('SOS')">🚨 SOS</button>
-        <button id="loc-btn" class="btn-alert" onclick="triggerAlert('LOC')">📍 POS</button>
+        <button id="sos-btn" class="btn-alert" onclick="triggerAlert('SOS')">🚨 SOS GLOBAL</button>
+        <button id="replay-btn" onclick="replayLastAudio()">🔄 RÁFAGA (5s)</button>
     </div>
+
     <div id="chat"></div>
     <button id="talk-btn" disabled>ESPERANDO...</button>
 </div>
 
 <div class="input-area">
     <input type="text" id="msg-in" placeholder="Mensaje..." onkeydown="if(event.key==='Enter') sendMsg()">
-    <button onclick="sendMsg()" style="background:var(--neon); border:none; border-radius:10px; width:50px; font-weight:bold; color:black;">></button>
+    <button onclick="sendMsg()" style="background:var(--neon); border:none; border-radius:10px; width:50px; font-weight:bold;">></button>
 </div>
 
 <script>
-    let socket, audioCtx, mainGain, cryptoKey, mediaRecorder, stream, myNick, btn;
+    let socket, audioCtx, cryptoKey, mediaRecorder, stream, myNick, btn;
+    let audioHistory = []; // Buffer para ráfaga
 
-    // --- SONIDOS TÁCTICOS ---
+    // --- SONIDOS ---
     function playRogerBeep() {
         if (!audioCtx) return;
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(1200, audioCtx.currentTime);
+        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+        o.type = 'sine'; o.frequency.setValueAtTime(1000, audioCtx.currentTime);
         g.gain.setValueAtTime(0.1, audioCtx.currentTime);
-        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.15);
-        osc.connect(g); g.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 0.15);
+        g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.1);
+        o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.1);
     }
 
     function playEmergencySiren() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const osc = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(440, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.5);
-        osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 1);
-        g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 1);
-        osc.connect(g); g.connect(audioCtx.destination);
-        osc.start(); osc.stop(audioCtx.currentTime + 1);
+        if (!audioCtx) audioCtx = new AudioContext();
+        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+        o.type = 'sawtooth';
+        o.frequency.setValueAtTime(440, audioCtx.currentTime);
+        o.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+        o.frequency.linearRampToValueAtTime(440, audioCtx.currentTime + 0.6);
+        g.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
+        o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.6);
     }
 
-    // --- LÓGICA CORE ---
-    window.onload = () => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.has('srv')) document.getElementById('url-in').value = atob(params.get('srv'));
-    };
-
-    function generateTacticalQR() {
-        const srvUrl = document.getElementById('url-in').value.trim();
-        if(!srvUrl) return alert("Escribe primero la URL");
-        const configUrl = `${window.location.href.split('?')[0]}?srv=${btoa(srvUrl)}`;
-        const qrDiv = document.getElementById('qrcode');
-        qrDiv.innerHTML = "";
-        new QRCode(qrDiv, { text: configUrl, width: 150, height: 150 });
-        document.getElementById('qr-container').style.display = "flex";
-        document.getElementById('gen-qr-btn').style.display = "none";
-    }
-
+    // --- LÓGICA ---
     async function deriveKey(p) {
         const enc = new TextEncoder();
         const bk = await crypto.subtle.importKey("raw", enc.encode(p), "PBKDF2", false, ["deriveKey"]);
-        return crypto.subtle.deriveKey({ name: "PBKDF2", salt: enc.encode("radio-salt-v22"), iterations: 600000, hash: "SHA-512" }, bk, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
+        return crypto.subtle.deriveKey({ name: "PBKDF2", salt: enc.encode("phantom-v22"), iterations: 600000, hash: "SHA-512" }, bk, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
     }
 
     async function startEnlace() {
-        const url = document.getElementById('url-in').value.trim();
-        socket = io(url, { transports: ['websocket', 'polling'] });
+        const url = document.getElementById('url-in').value;
+        socket = io(url);
+        myNick = document.getElementById('nick-in').value;
+        cryptoKey = await deriveKey(document.getElementById('pass-in').value);
 
-        socket.on('connect', async () => {
-            myNick = document.getElementById('nick-in').value;
-            cryptoKey = await deriveKey(document.getElementById('pass-in').value);
-            socket.emit('join-room', { roomName: document.getElementById('room-in').value, password: document.getElementById('pass-in').value, nickname: myNick });
+        socket.on('connect', () => {
+            socket.emit('join-room', { roomName: document.getElementById('room-in').value, nickname: myNick });
         });
 
         socket.on('joined-success', () => {
             document.getElementById('auth-overlay').style.display = 'none';
-            setupLogic();
+            setupApp();
         });
     }
 
-    function setupLogic() {
+    function setupApp() {
         btn = document.getElementById('talk-btn');
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        
-        socket.on('user-list', list => document.getElementById('user-count').innerText = `USUARIOS: ${list.length}`);
-        
-        socket.on('channel-busy', user => {
-            if(user !== myNick) {
-                btn.disabled = true;
-                btn.innerText = `RX: ${user.toUpperCase()}`;
-                btn.classList.remove('ready');
+        audioCtx = new AudioContext();
+
+        socket.on('user-list', list => {
+            document.getElementById('user-list-btn').innerText = `OPERADORES: ${list.length} ▾`;
+            document.getElementById('user-dropdown').innerHTML = list.map(u => `<div style="padding:5px; font-size:10px; border-bottom:1px solid #222;">● ${u}</div>`).join('');
+        });
+
+        socket.on('channel-busy', u => {
+            if(u !== myNick) {
+                btn.disabled = true; btn.innerText = `RX: ${u.toUpperCase()}`;
                 document.getElementById('status-led').classList.add('led-rx');
             }
         });
@@ -177,43 +154,48 @@
         });
 
         socket.on('chat-message', d => {
-            addMessage(`<b>${d.user}:</b> ${d.text}`);
+            addMessage(`<b>${d.user}:</b> ${d.text}`, d.time);
         });
 
         socket.on('incoming-alert', d => {
-            playEmergencySiren();
+            playEmergencySiren(); // SUENA EN TODOS
             const isSOS = d.type === 'SOS';
-            const mapUrl = `http://google.com/maps?q=${d.coords.lat},${d.coords.lon}`;
-            addMessage(`<b style="color:${isSOS ? 'var(--sos)' : 'var(--rx)'}">${isSOS ? '🚨 SOS' : '📍 POS'}: ${d.user}</b><br><a href="${mapUrl}" target="_blank" style="color:var(--neon)">VER MAPA GPS</a>`);
+            const map = `http://google.com/maps?q=${d.coords.lat},${d.coords.lon}`;
+            addMessage(`<b style="color:var(--sos)">${isSOS ? '🚨 SOS' : '📍 POS'} DE ${d.user}</b><br><a href="${map}" target="_blank" style="color:var(--neon)">UBICACIÓN GPS</a>`, d.time);
         });
 
         socket.on('audio-stream', async d => {
             try {
                 const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(d.iv) }, cryptoKey, new Uint8Array(d.ciphertext));
-                const audio = new Audio(URL.createObjectURL(new Blob([dec], { type: 'audio/webm' })));
-                audio.play();
+                const blob = new Blob([dec], { type: 'audio/webm' });
+                const url = URL.createObjectURL(blob);
+                
+                // Guardar en ráfaga (mantenemos las últimas 5 ráfagas)
+                audioHistory.push(url);
+                if(audioHistory.length > 5) audioHistory.shift();
+
+                new Audio(url).play();
             } catch(e) {}
         });
 
         initMic();
     }
 
-    function addMessage(html) {
+    function addMessage(html, time) {
         const chat = document.getElementById('chat');
         const div = document.createElement('div');
         div.className = 'msg';
-        div.innerHTML = html;
+        div.innerHTML = `<span class="msg-time">${time}</span>` + html;
         chat.appendChild(div);
-        // Scroll automático suave al final
         chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
     }
 
     function initMic() {
         navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
             stream = s;
-            btn.disabled = false; btn.classList.add('ready'); btn.innerText = "PULSAR PARA HABLAR";
+            btn.disabled = false; btn.classList.add('ready');
 
-            const startPTT = (e) => {
+            const start = (e) => {
                 if(btn.disabled || btn.classList.contains('active')) return;
                 if(e.cancelable) e.preventDefault();
                 audioCtx.resume();
@@ -235,18 +217,18 @@
                 mediaRecorder.start();
             };
 
-            const stopPTT = () => {
+            const stop = () => {
                 if(mediaRecorder?.state === 'recording') {
                     mediaRecorder.stop(); socket.emit('release-mic');
                     btn.classList.remove('active');
-                    playRogerBeep(); // Confirmación local
+                    playRogerBeep();
                 }
             };
 
-            btn.addEventListener('touchstart', startPTT, { passive: false });
-            btn.addEventListener('touchend', stopPTT, { passive: false });
-            btn.addEventListener('mousedown', startPTT);
-            btn.addEventListener('mouseup', stopPTT);
+            btn.addEventListener('touchstart', start, { passive: false });
+            btn.addEventListener('touchend', stop);
+            btn.addEventListener('mousedown', start);
+            btn.addEventListener('mouseup', stop);
         });
     }
 
@@ -258,7 +240,19 @@
     function triggerAlert(type) {
         navigator.geolocation.getCurrentPosition(p => {
             socket.emit('send-alert', { type, coords: { lat: p.coords.latitude, lon: p.coords.longitude } });
-        }, null, { enableHighAccuracy: true });
+        });
+    }
+
+    function toggleUsers() {
+        const d = document.getElementById('user-dropdown');
+        d.style.display = d.style.display === 'block' ? 'none' : 'block';
+    }
+
+    function replayLastAudio() {
+        if(audioHistory.length > 0) {
+            const last = audioHistory[audioHistory.length - 1];
+            new Audio(last).play();
+        }
     }
 </script>
 </body>
