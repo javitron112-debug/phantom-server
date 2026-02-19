@@ -26,7 +26,7 @@ io.on('connection', (socket) => {
         roomsData[roomName].users[socket.id] = nickname;
 
         socket.emit('joined-success');
-        // Notificar lista actualizada a todos
+        // Notificar lista actualizada a todos en la sala
         io.to(roomName).emit('user-list', Object.values(roomsData[roomName].users));
     });
 
@@ -56,6 +56,16 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('send-alert', (data) => {
+        if (currentRoom) {
+            io.to(currentRoom).emit('incoming-alert', { 
+                ...data, 
+                user: myNickname, 
+                time: new Date().toLocaleTimeString() 
+            });
+        }
+    });
+
     socket.on('disconnect', () => {
         if (currentRoom && roomsData[currentRoom]) {
             delete roomsData[currentRoom].users[socket.id];
@@ -69,4 +79,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`RADIO ONLINE EN PUERTO ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`RADIO PHANTOM ONLINE EN PUERTO ${PORT}`));
