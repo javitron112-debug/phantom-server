@@ -12,18 +12,17 @@ io.on('connection', (socket) => {
     let currentRoom = null;
     let myNickname = null;
 
-    socket.on('join-room', ({ roomName, password, nickname }) => {
+    socket.on('join-room', ({ roomName, nickname }) => {
         socket.join(roomName);
         currentRoom = roomName;
         myNickname = nickname;
 
         if (!roomsData[roomName]) {
-            roomsData[roomName] = { password, users: {}, speaker: null };
+            roomsData[roomName] = { users: {}, speaker: null };
         }
         roomsData[roomName].users[socket.id] = nickname;
 
         socket.emit('joined-success');
-        // Enviamos la lista completa de nombres de usuario a la sala
         io.to(roomName).emit('user-list', Object.values(roomsData[roomName].users));
     });
 
@@ -78,4 +77,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`PHANTOM SERVER ONLINE ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`PHANTOM ONLINE ${PORT}`));
