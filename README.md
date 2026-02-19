@@ -1,69 +1,82 @@
-# ⚡ PHANTOM V22.4 | Tactical Web Radio & Relay ⚡
+# ⚡ PHANTOM V22.6 | Tactical Web Radio ⚡
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Versión-22.4_Stable-00ff41?style=for-the-badge&logo=render&logoColor=white" />
-  <img src="https://img.shields.io/badge/Seguridad-AES--GCM_E2EE-blue?style=for-the-badge" />
-  <img src="https://img.shields.io/badge/Audio-Tactical_Beep_%26_Siren-orange?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Versión-22.6_Stable-00ff41?style=for-the-badge&logo=render&logoColor=white" />
+  <img src="https://img.shields.io/badge/Security-AES--GCM_E2EE-blue?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Mobile-Wake--Lock_Active-orange?style=for-the-badge" />
 </p>
 
-**PHANTOM** evoluciona a la versión 22.4, consolidándose como una plataforma de comunicación efímera de alto rendimiento. Esta actualización introduce herramientas de inteligencia de campo y mejoras críticas en la señalización acústica.
+**PHANTOM** es un sistema de comunicación táctica efímero diseñado para operaciones que requieren soberanía total de datos y persistencia cero. La versión 22.6 optimiza el despliegue en campo mediante invitaciones QR y garantiza la conexión en dispositivos móviles con la pantalla bloqueada.
 
 ---
 
-## 🆕 Novedades de la V22.4
+## 🆕 Novedades de la V22.6
 
-### 🔄 Sistema de Grabación de Ráfaga (Instant Replay)
-Implementación de un buffer circular de audio que almacena las últimas transmisiones recibidas. Permite al operador re-escuchar el último mensaje con un solo toque, ideal para entornos con ruido ambiental elevado donde la primera escucha no fue clara.
+### 📲 Sistema de Invitación Simplificado (QR & Link)
+Ahora es posible invitar a nuevos operadores sin que tengan que configurar manualmente el servidor o la contraseña.
+- **QR de Invitación:** Genera un código que contiene los metadatos de la sala.
+- **Enlace Directo:** Permite enviar la configuración vía aplicaciones de mensajería.
+- **Flujo "One-Click":** El invitado solo debe introducir su nombre de operador; el resto de los campos técnicos se auto-configuran y se ocultan para reducir errores.
 
-### 👥 Gestión de Operadores Activos
-Nueva interfaz de monitorización de equipo. El encabezado táctico ahora incluye un menú desplegable en tiempo real que lista los IDs de todos los operadores sintonizados en la misma frecuencia.
+### 🔋 Persistencia Táctica (Background Mode)
+Optimizado para evitar que Android e iOS suspendan la aplicación al apagar la pantalla:
+- **Wake-Lock API:** Mantiene la CPU activa para procesar paquetes de audio.
+- **Silent Background Loop:** Engaña al sistema operativo simulando una reproducción de audio constante, evitando que el proceso sea "matado" para ahorrar batería.
 
-### 🚨 Alerta SOS Sincronizada
-El protocolo de emergencia ahora es **global**. Al activarse el SOS, la sirena de alta intensidad (onda de sierra) se dispara simultáneamente en todos los dispositivos conectados a la sala, garantizando una respuesta inmediata del equipo.
-
-### 🕒 Registro Temporal (Timestamping)
-Todos los mensajes de texto y alertas de posición incluyen ahora una marca de tiempo precisa (`HH:MM`), permitiendo una cronología exacta de los eventos en el log de misión.
+### 🔄 Ráfaga de Audio (5s Buffer)
+Botón de respuesta rápida que reproduce la última transmisión recibida. Crucial en entornos ruidosos donde la comunicación inicial puede perderse.
 
 ---
 
-## 🛠️ Especificaciones Técnicas Actualizadas
+## 🛠️ Arquitectura del Sistema
 
-| Módulo | Tecnología | Función |
+
+
+| Característica | Implementación | Beneficio |
 | :--- | :--- | :--- |
-| **Cifrado de Voz** | AES-GCM 256-bit | Encriptación E2EE antes de la salida de datos. |
-| **Audio Táctico** | Roger Beep (1000Hz) | Confirmación local de fin de transmisión. |
-| **Alerta SOS** | Sawtooth Oscillator | Sirena global de 440Hz-880Hz. |
-| **Buffer de Ráfaga** | Blob URL Memory | Almacenamiento volátil de los últimos 5 audios. |
-
-
+| **Cifrado** | AES-GCM 256-bit | Privacidad total; el servidor no puede leer el contenido. |
+| **Persistencia** | Zero-Log (RAM Only) | Si el servidor se apaga, toda la historia desaparece. |
+| **Audio** | Web Audio API | Generación sintética de Beeps y Sirenas SOS globales. |
+| **Sincronización** | Socket.io | Latencia mínima en comunicaciones medio-dúplex. |
 
 ---
 
-## 🚀 Despliegue Rápido
+## 🚀 Guía de Despliegue
 
-### 1. Servidor (Backend)
-Actualiza tu `server.js` para soportar la nueva lógica de `user-list` detallada.
+### 1. Requisitos
+- **Servidor:** Node.js instalado (o cuenta en Render/Railway).
+- **Cliente:** Acceso obligatorio vía **HTTPS** (necesario para Micrófono y Wake-Lock).
 
-npm install
+### 2. Instalación
+
+## Clonar repositorio
+git clone [https://github.com/tu-usuario/phantom-radio.git](https://github.com/tu-usuario/phantom-radio.git)
+
+## Instalar dependencias
+npm install express socket.io
+
+## Iniciar servicio
 node server.js
-### 2. Cliente (Frontend)
-Sube el nuevo index.html a tu hosting HTTPS.
 
-## [!CAUTION] 
-El acceso vía HTTPS es obligatorio para que el navegador permita el uso del micrófono, la geolocalización y el motor de AudioContext necesario para la sirena.
+### 3. Configuración en Móvil (Crítico)
+Para garantizar que la radio funcione con la pantalla apagada:
 
-🔍 Troubleshooting (Solución de Problemas)
-[!IMPORTANT]
-¿No escuchas la sirena SOS?
-Algunos navegadores (especialmente en iOS) bloquean el audio automático. Es necesario que el usuario haya interactuado con la pantalla (un toque en cualquier lugar) al menos una vez tras cargar la página para "despertar" el motor de audio.
+Android: Ajustes > Aplicación (Chrome) > Batería > Sin Restricciones.
 
-[!TIP]
-Uso de la Ráfaga
-El botón de ráfaga solo funcionará si ya has recibido al menos una transmisión de audio desde que entraste en la sala. El historial se borra completamente al refrescar la pestaña.
+iOS: Desactivar el Modo de Bajo Consumo.
 
-### ⚠️ Descargo de Responsabilidad (Disclaimer)
-Este software es una Prueba de Concepto (PoC). La estabilidad depende de la latencia de red. El sistema no almacena logs; una vez cerrada la sesión, la información es irrecuperable por diseño.
+## 🚨 Protocolos de Emergencia
+Al activar el botón SOS, el sistema:
+
+Obtiene las coordenadas GPS exactas.
+
+Emite una sirena sonora global en todos los terminales sintonizados.
+
+Envía un mensaje de chat con un enlace directo a Google Maps con la posición del operador en peligro.
+
+## ⚠️ Seguridad y Privacidad
+Este sistema utiliza PBKDF2 con 600,000 iteraciones para derivar la clave de cifrado. Esto significa que la contraseña nunca viaja por la red; solo se usa localmente para cifrar y descifrar los paquetes que pasan por el servidor.
 
 <p align="center">
-<i>PHANTOM TACTICAL - Silent. Invisible. Secure. v22.4.0</i>
+<i>PHANTOM TACTICAL - Silent. Invisible. Secure. v22.6.0</i>
 </p>
