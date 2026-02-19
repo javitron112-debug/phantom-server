@@ -4,10 +4,7 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-    cors: { origin: "*" },
-    transports: ['websocket', 'polling']
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 let roomsData = {};
 
@@ -26,6 +23,7 @@ io.on('connection', (socket) => {
         roomsData[roomName].users[socket.id] = nickname;
 
         socket.emit('joined-success');
+        // Enviamos la lista completa de nombres de usuario a la sala
         io.to(roomName).emit('user-list', Object.values(roomsData[roomName].users));
     });
 
@@ -44,14 +42,16 @@ io.on('connection', (socket) => {
     });
 
     socket.on('audio-chunk', (data) => {
-        if (currentRoom) {
-            socket.to(currentRoom).emit('audio-stream', data);
-        }
+        if (currentRoom) socket.to(currentRoom).emit('audio-stream', data);
     });
 
     socket.on('chat-message', (text) => {
         if (currentRoom) {
-            io.to(currentRoom).emit('chat-message', { user: myNickname, text: text });
+            io.to(currentRoom).emit('chat-message', { 
+                user: myNickname, 
+                text: text, 
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+            });
         }
     });
 
@@ -60,7 +60,7 @@ io.on('connection', (socket) => {
             io.to(currentRoom).emit('incoming-alert', { 
                 ...data, 
                 user: myNickname, 
-                time: new Date().toLocaleTimeString() 
+                time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
             });
         }
     });
@@ -68,14 +68,14 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         if (currentRoom && roomsData[currentRoom]) {
             delete roomsData[currentRoom].users[socket.id];
+            io.to(currentRoom).emit('user-list', Object.values(roomsData[currentRoom].users));
             if (roomsData[currentRoom].speaker === myNickname) {
                 roomsData[currentRoom].speaker = null;
                 io.to(currentRoom).emit('channel-free');
             }
-            io.to(currentRoom).emit('user-list', Object.values(roomsData[currentRoom].users));
         }
     });
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`PHANTOM SERVER ONLINE PORT ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`PHANTOM SERVER ONLINE ${PORT}`));
