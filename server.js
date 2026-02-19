@@ -26,7 +26,6 @@ io.on('connection', (socket) => {
         roomsData[roomName].users[socket.id] = nickname;
 
         socket.emit('joined-success');
-        // Notificar lista actualizada a todos en la sala
         io.to(roomName).emit('user-list', Object.values(roomsData[roomName].users));
     });
 
@@ -79,4 +78,4 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, '0.0.0.0', () => console.log(`RADIO PHANTOM ONLINE EN PUERTO ${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`PHANTOM SERVER ONLINE PORT ${PORT}`));
