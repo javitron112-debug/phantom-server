@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PHANTOM V22.6 | TACTICAL RECAP</title>
+    <title>PHANTOM V23.1 | WebRTC TACTICAL</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         :root { --neon: #00ff41; --sos: #ff3131; --ptt: #ff8c00; --rx: #0088ff; --bg: #050508; }
-        body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Courier New', monospace; height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; -webkit-user-select: none; }
         .app-shell { flex: 1; display: flex; flex-direction: column; padding: 15px; padding-bottom: 90px; box-sizing: border-box; }
         header { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #222; }
         .user-menu { position: relative; }
@@ -20,12 +20,11 @@
         .emergency-tools { display: flex; gap: 8px; margin: 10px 0; flex-wrap: wrap; }
         .btn-alert { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; min-width: 80px; }
         #sos-btn { background: var(--sos); }
-        #replay-btn { background: #222; border: 1px solid #444; }
         #invite-btn { background: var(--neon); color: black; }
         #chat { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; border: 1px solid #111; margin-bottom: 10px; display: flex; flex-direction: column; max-height: 40vh; }
-        .msg { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--neon); font-size: 12px; position: relative; }
+        .msg { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--neon); font-size: 12px; position: relative; word-wrap: break-word; }
         .msg-time { position: absolute; right: 8px; top: 8px; font-size: 9px; color: #555; }
-        #talk-btn { width: 100%; padding: 40px 0; border-radius: 20px; border: 2px solid #333; background: #111; color: #444; font-weight: 900; font-size: 20px; touch-action: none; margin: 10px 0; }
+        #talk-btn { width: 100%; padding: 40px 0; border-radius: 20px; border: 2px solid #333; background: #111; color: #444; font-weight: 900; font-size: 20px; touch-action: manipulation; margin: 10px 0; -webkit-touch-callout: none; }
         #talk-btn.ready { background: var(--ptt); color: black; }
         #talk-btn.active { background: var(--sos); color: white; }
         .input-area { position: fixed; bottom: 0; left: 0; width: 100%; display: flex; gap: 8px; padding: 15px; background: #000; border-top: 1px solid #222; box-sizing: border-box; }
@@ -40,11 +39,11 @@
 
 <div id="auth-overlay">
     <form class="card" onsubmit="event.preventDefault(); startEnlace();">
-        <h2 style="color: var(--neon); text-align: center; margin-top:0;">PHANTOM V22.6</h2>
+        <h2 style="color: var(--neon); text-align: center; margin-top:0;">PHANTOM V23.1</h2>
         <div id="setup-fields">
-            <input type="text" id="url-in" placeholder="URL SERVER" required>
+            <input type="text" id="url-in" placeholder="URL SERVER WSS" required>
             <input type="text" id="room-in" placeholder="CANAL" required>
-            <input type="password" id="pass-in" placeholder="PASSWORD E2EE" required>
+            <input type="password" id="pass-in" placeholder="CONTRASEÑA SALA" required>
         </div>
         <input type="text" id="nick-in" placeholder="ID OPERADOR" required>
         <button type="submit" style="width:100%; padding:15px; background:var(--neon); border:none; border-radius:10px; font-weight:bold; cursor:pointer; color:black;">CONECTAR</button>
@@ -68,32 +67,39 @@
     <div class="emergency-tools">
         <button id="sos-btn" class="btn-alert" onclick="triggerAlert('SOS')">🚨 SOS</button>
         <button id="invite-btn" class="btn-alert" onclick="generateInviteQR()">➕ INVITAR</button>
-        <button id="replay-btn" class="btn-alert" onclick="replayLastAudio()">🔄 RÁFAGA</button>
     </div>
     <div id="chat"></div>
-    <button id="talk-btn" disabled>STANDBY</button>
+    <button id="talk-btn" disabled oncontextmenu="return false;">STANDBY</button>
 </div>
 
 <div class="input-area">
-    <input type="text" id="msg-in" placeholder="Mensaje..." onkeydown="if(event.key==='Enter') sendMsg()">
+    <input type="text" id="msg-in" placeholder="Mensaje seguro..." onkeydown="if(event.key==='Enter') sendMsg()">
     <button onclick="sendMsg()" style="background:var(--neon); border:none; border-radius:10px; width:50px; font-weight:bold;">></button>
 </div>
 
+<div id="audio-container" style="display:none;"></div>
+
 <script>
-    let socket, audioCtx, cryptoKey, mediaRecorder, stream, myNick, btn, wakeLock = null;
-    let audioHistory = [];
+    let socket, localStream, myNick, roomName, wakeLock = null;
+    let peers = {}; 
+    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     window.onload = () => {
-        const params = new URLSearchParams(window.location.search);
-        if (params.has('inv')) {
+        const hash = window.location.hash.substring(1);
+        if (hash && hash.startsWith('inv=')) {
             try {
-                const data = JSON.parse(atob(params.get('inv')));
+                const data = JSON.parse(atob(hash.split('=')[1]));
                 document.getElementById('url-in').value = data.url;
                 document.getElementById('room-in').value = data.room;
                 document.getElementById('pass-in').value = data.pass;
                 document.getElementById('setup-fields').style.display = 'none';
-            } catch(e) {}
+            } catch(e) { console.error("Enlace de invitación inválido"); }
         }
+        
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') requestWakeLock();
+        });
     };
 
     async function requestWakeLock() {
@@ -102,54 +108,51 @@
         }
     }
 
-    function enableBackgroundAudio() {
-        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-        g.gain.value = 0; o.connect(g); g.connect(audioCtx.destination); o.start();
-    }
-
-    async function deriveKey(p) {
-        const enc = new TextEncoder();
-        const bk = await crypto.subtle.importKey("raw", enc.encode(p), "PBKDF2", false, ["deriveKey"]);
-        return crypto.subtle.deriveKey({ name: "PBKDF2", salt: enc.encode("phantom-v22"), iterations: 600000, hash: "SHA-512" }, bk, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]);
-    }
-
     async function startEnlace() {
         const url = document.getElementById('url-in').value;
-        socket = io(url);
+        roomName = document.getElementById('room-in').value;
+        const pass = document.getElementById('pass-in').value;
         myNick = document.getElementById('nick-in').value;
-        cryptoKey = await deriveKey(document.getElementById('pass-in').value);
+
+        try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                throw new Error("API bloqueada. El entorno no es seguro (Requiere HTTPS).");
+            }
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+            localStream.getAudioTracks()[0].enabled = false; 
+        } catch (err) {
+            alert(`Fallo de Micrófono:\n${err.name}: ${err.message}\n\nSi estás en el móvil, verifica que la URL empieza por HTTPS o que tienes los permisos de la app activados.`);
+            return;
+        }
+
+        socket = io(url, { auth: { token: pass } }); 
 
         socket.on('connect', () => {
-            socket.emit('join-room', { roomName: document.getElementById('room-in').value, nickname: myNick });
-            enableBackgroundAudio();
+            socket.emit('join-room', { roomName: roomName, nickname: myNick });
             requestWakeLock();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
         });
 
         socket.on('joined-success', () => {
             document.getElementById('auth-overlay').style.display = 'none';
             setupApp();
+            socket.emit('request-peers'); 
+        });
+
+        socket.on('connect_error', (err) => {
+            alert("Error de conexión. Verifica la URL del servidor WSS y la contraseña.");
         });
     }
 
     function setupApp() {
-        btn = document.getElementById('talk-btn');
+        const btn = document.getElementById('talk-btn');
+        btn.disabled = false;
+        btn.innerText = "PULSAR PARA HABLAR";
+        btn.classList.add('ready');
+
         socket.on('user-list', list => {
             document.getElementById('user-list-btn').innerText = `OPERADORES: ${list.length} ▾`;
             document.getElementById('user-dropdown').innerHTML = list.map(u => `<div style="padding:5px; font-size:10px; border-bottom:1px solid #222;">● ${u}</div>`).join('');
-        });
-
-        socket.on('channel-busy', u => {
-            if(u !== myNick) {
-                btn.disabled = true; btn.innerText = `RX: ${u.toUpperCase()}`;
-                document.getElementById('status-led').classList.add('led-rx');
-            }
-        });
-
-        socket.on('channel-free', () => {
-            btn.disabled = false; btn.innerText = "PULSAR PARA HABLAR";
-            btn.classList.add('ready');
-            document.getElementById('status-led').classList.remove('led-rx', 'led-tx');
         });
 
         socket.on('chat-message', d => addMessage(`<b>${d.user}:</b> ${d.text}`, d.time));
@@ -157,32 +160,126 @@
         socket.on('incoming-alert', d => {
             playEmergencySiren();
             const isSOS = d.type === 'SOS';
-            const map = `http://google.com/maps?q=${d.coords.lat},${d.coords.lon}`;
-            addMessage(`<b style="color:var(--sos)">${isSOS ? '🚨 SOS' : '📍 POS'} DE ${d.user}</b><br><a href="${map}" target="_blank" style="color:var(--neon)">MAPA GPS</a>`, d.time);
+            const mapUrl = `https://www.google.com/maps?q=${d.coords.lat},${d.coords.lon}`;
+            addMessage(`<b style="color:var(--sos)">${isSOS ? '🚨 SOS' : '📍 POS'} DE ${d.user}</b><br><a href="${mapUrl}" target="_blank" style="color:var(--neon)">MAPA GPS</a>`, d.time);
         });
 
-        socket.on('audio-stream', async d => {
-            try {
-                const dec = await crypto.subtle.decrypt({ name: "AES-GCM", iv: new Uint8Array(d.iv) }, cryptoKey, new Uint8Array(d.ciphertext));
-                const url = URL.createObjectURL(new Blob([dec], { type: 'audio/webm' }));
-                audioHistory.push(url); if(audioHistory.length > 5) audioHistory.shift();
-                new Audio(url).play();
-            } catch(e) {}
+        socket.on('ptt-active', u => {
+            if(u !== myNick) {
+                btn.disabled = true; btn.innerText = `RX: ${u.toUpperCase()}`;
+                document.getElementById('status-led').classList.add('led-rx');
+            }
         });
 
-        initMic();
+        socket.on('ptt-inactive', () => {
+            btn.disabled = false; btn.innerText = "PULSAR PARA HABLAR";
+            document.getElementById('status-led').classList.remove('led-rx');
+        });
+
+        setupWebRTCSignaling();
+        initPTTLogic(btn);
+    }
+
+    function setupWebRTCSignaling() {
+        socket.on('user-joined', async (userId) => {
+            const peerConnection = createPeerConnection(userId);
+            const offer = await peerConnection.createOffer();
+            await peerConnection.setLocalDescription(offer);
+            socket.emit('webrtc-signal', { target: userId, type: 'offer', data: offer });
+        });
+
+        socket.on('webrtc-signal', async ({ sender, type, data }) => {
+            let pc = peers[sender];
+            if (!pc && type === 'offer') pc = createPeerConnection(sender);
+
+            if (type === 'offer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                socket.emit('webrtc-signal', { target: sender, type: 'answer', data: answer });
+            } else if (type === 'answer') {
+                await pc.setRemoteDescription(new RTCSessionDescription(data));
+            } else if (type === 'ice-candidate') {
+                await pc.addIceCandidate(new RTCIceCandidate(data));
+            }
+        });
+
+        socket.on('user-disconnected', userId => {
+            if(peers[userId]) {
+                peers[userId].close();
+                delete peers[userId];
+                const audioEl = document.getElementById(`audio-${userId}`);
+                if(audioEl) audioEl.remove();
+            }
+        });
+    }
+
+    function createPeerConnection(userId) {
+        const pc = new RTCPeerConnection(rtcConfig);
+        peers[userId] = pc;
+
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+        pc.onicecandidate = event => {
+            if (event.candidate) {
+                socket.emit('webrtc-signal', { target: userId, type: 'ice-candidate', data: event.candidate });
+            }
+        };
+
+        pc.ontrack = event => {
+            let audioEl = document.getElementById(`audio-${userId}`);
+            if (!audioEl) {
+                audioEl = document.createElement('audio');
+                audioEl.id = `audio-${userId}`;
+                audioEl.autoplay = true;
+                document.getElementById('audio-container').appendChild(audioEl);
+            }
+            audioEl.srcObject = event.streams[0];
+        };
+
+        return pc;
+    }
+
+    function initPTTLogic(btn) {
+        const startTx = (e) => {
+            if(btn.disabled || btn.classList.contains('active')) return;
+            if(e.cancelable) e.preventDefault();
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            
+            localStream.getAudioTracks()[0].enabled = true;
+            btn.classList.add('active');
+            document.getElementById('status-led').classList.add('led-tx');
+            socket.emit('ptt-active');
+        };
+
+        const stopTx = () => {
+            if(btn.classList.contains('active')) {
+                localStream.getAudioTracks()[0].enabled = false;
+                btn.classList.remove('active');
+                document.getElementById('status-led').classList.remove('led-tx');
+                socket.emit('ptt-inactive');
+                playRogerBeep();
+            }
+        };
+
+        btn.addEventListener('touchstart', startTx, { passive: false });
+        btn.addEventListener('touchend', stopTx);
+        btn.addEventListener('mousedown', startTx);
+        btn.addEventListener('mouseup', stopTx);
+        btn.addEventListener('mouseleave', stopTx);
     }
 
     function addMessage(html, time) {
         const chat = document.getElementById('chat');
         const div = document.createElement('div');
         div.className = 'msg';
-        div.innerHTML = `<span class="msg-time">${time}</span>` + html;
+        div.innerHTML = `<span class="msg-time">${time || new Date().toLocaleTimeString()}</span>` + html;
         chat.appendChild(div);
         chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
     }
 
     function playRogerBeep() {
+        if(!audioCtx) return;
         const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
         o.type = 'sine'; o.frequency.setValueAtTime(1000, audioCtx.currentTime);
         g.gain.setValueAtTime(0.05, audioCtx.currentTime);
@@ -191,6 +288,7 @@
     }
 
     function playEmergencySiren() {
+        if(!audioCtx) return;
         const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
         o.type = 'sawtooth'; o.frequency.setValueAtTime(440, audioCtx.currentTime);
         o.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 0.3);
@@ -200,51 +298,9 @@
         o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.6);
     }
 
-    function initMic() {
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-            stream = s;
-            btn.disabled = false; btn.classList.add('ready');
-
-            const start = (e) => {
-                if(btn.disabled || btn.classList.contains('active')) return;
-                if(e.cancelable) e.preventDefault();
-                audioCtx.resume();
-                btn.classList.add('active');
-                document.getElementById('status-led').classList.add('led-tx');
-                socket.emit('request-mic');
-                mediaRecorder = new MediaRecorder(stream);
-                let chunks = [];
-                mediaRecorder.ondataavailable = ev => chunks.push(ev.data);
-                mediaRecorder.onstop = () => {
-                    const reader = new FileReader();
-                    reader.readAsArrayBuffer(new Blob(chunks));
-                    reader.onloadend = async () => {
-                        const iv = crypto.getRandomValues(new Uint8Array(12));
-                        const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, cryptoKey, reader.result);
-                        socket.emit('audio-chunk', { iv: Array.from(iv), ciphertext: Array.from(new Uint8Array(ct)) });
-                    };
-                };
-                mediaRecorder.start();
-            };
-
-            const stop = () => {
-                if(mediaRecorder?.state === 'recording') {
-                    mediaRecorder.stop(); socket.emit('release-mic');
-                    btn.classList.remove('active');
-                    playRogerBeep();
-                }
-            };
-
-            btn.addEventListener('touchstart', start, { passive: false });
-            btn.addEventListener('touchend', stop);
-            btn.addEventListener('mousedown', start);
-            btn.addEventListener('mouseup', stop);
-        });
-    }
-
     function generateInviteQR() {
         const data = { url: document.getElementById('url-in').value, room: document.getElementById('room-in').value, pass: document.getElementById('pass-in').value };
-        const inviteUrl = `${window.location.origin}${window.location.pathname}?inv=${btoa(JSON.stringify(data))}`;
+        const inviteUrl = `${window.location.origin}${window.location.pathname}#inv=${btoa(JSON.stringify(data))}`;
         const qrContainer = document.getElementById('invite-qrcode');
         qrContainer.innerHTML = "";
         new QRCode(qrContainer, { text: inviteUrl, width: 250, height: 250 });
@@ -254,7 +310,7 @@
     function copyInviteLink(e) {
         e.stopPropagation();
         const data = { url: document.getElementById('url-in').value, room: document.getElementById('room-in').value, pass: document.getElementById('pass-in').value };
-        const inviteUrl = `${window.location.origin}${window.location.pathname}?inv=${btoa(JSON.stringify(data))}`;
+        const inviteUrl = `${window.location.origin}${window.location.pathname}#inv=${btoa(JSON.stringify(data))}`;
         navigator.clipboard.writeText(inviteUrl).then(() => alert("Enlace copiado"));
     }
 
@@ -264,18 +320,19 @@
     }
 
     function triggerAlert(type) {
-        navigator.geolocation.getCurrentPosition(p => {
-            socket.emit('send-alert', { type, coords: { lat: p.coords.latitude, lon: p.coords.longitude } });
-        });
+        if (!navigator.geolocation) {
+            alert("Tu navegador no soporta geolocalización.");
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            p => socket.emit('send-alert', { type, coords: { lat: p.coords.latitude, lon: p.coords.longitude } }),
+            err => alert("Error obteniendo ubicación. Verifica los permisos de la app.")
+        );
     }
 
     function toggleUsers() {
         const d = document.getElementById('user-dropdown');
         d.style.display = d.style.display === 'block' ? 'none' : 'block';
-    }
-
-    function replayLastAudio() {
-        if(audioHistory.length > 0) new Audio(audioHistory[audioHistory.length - 1]).play();
     }
 </script>
 </body>
