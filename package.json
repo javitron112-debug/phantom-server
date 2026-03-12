@@ -1,4 +1,16 @@
-"main": "server.js",
+{
+  "name": "phantom-server",
+  "version": "23.1.0",
+  "description": "Servidor de Señalización WebRTC para PHANTOM TACTICAL",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
+}
