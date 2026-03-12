@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PHANTOM V23.2 | WebRTC TACTICAL</title>
+    <title>PHANTOM V23.3 | WebRTC TURN</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
@@ -39,7 +39,7 @@
 
 <div id="auth-overlay">
     <form class="card" onsubmit="event.preventDefault(); startEnlace();">
-        <h2 style="color: var(--neon); text-align: center; margin-top:0;">PHANTOM V23.2</h2>
+        <h2 style="color: var(--neon); text-align: center; margin-top:0;">PHANTOM V23.3</h2>
         <div id="setup-fields">
             <input type="text" id="url-in" placeholder="URL SERVER WSS" required>
             <input type="text" id="room-in" placeholder="CANAL" required>
@@ -82,7 +82,28 @@
 <script>
     let socket, localStream, myNick, roomName, wakeLock = null;
     let peers = {}; 
-    const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+    
+    // Configuración obligatoria para atravesar NAT Simétrico (4G/5G)
+    const rtcConfig = { 
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { 
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            { 
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            { 
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
+        ] 
+    };
     let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
     window.onload = () => {
@@ -218,10 +239,9 @@
 
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
 
-        // Alerta de estado de red P2P
         pc.oniceconnectionstatechange = () => {
             if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-                addMessage(`<b style="color:var(--sos)">⚠️ Fallo P2P. La red de ${userId} está bloqueando el audio.</b>`);
+                addMessage(`<b style="color:var(--sos)">⚠️ Advertencia de Red: Enlace de audio con ${userId} inestable.</b>`);
             }
         };
 
@@ -237,12 +257,11 @@
                 audioEl = document.createElement('audio');
                 audioEl.id = `audio-${userId}`;
                 audioEl.autoplay = true;
-                audioEl.playsInline = true; // Crítico para iOS/Safari
+                audioEl.playsInline = true;
                 document.getElementById('audio-container').appendChild(audioEl);
             }
             audioEl.srcObject = event.streams[0];
             
-            // Forzar reproducción y capturar bloqueos de navegador
             audioEl.play().catch(e => {
                 console.warn("Autoplay bloqueado.", e);
             });
