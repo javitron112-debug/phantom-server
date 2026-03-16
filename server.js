@@ -36,9 +36,13 @@ function writeLog(event, details) {
 
 const recentAudioMap = new Map(); 
 
-// --- SEGURIDAD PERIMETRAL: FILTRO IP ---
+// --- SEGURIDAD PERIMETRAL: FILTRO IP ACTUALIZADO PARA TAILSCALE ---
 function isIpAuthorized(clientIp) {
-    return clientIp.includes('127.0.0.1') || clientIp === '::1' || clientIp.includes('192.168.');
+    return clientIp.includes('127.0.0.1') || 
+           clientIp === '::1' || 
+           clientIp.includes('192.168.') || 
+           clientIp.includes('100.'); // Permite el acceso a los nodos de Tailscale
+}
 }
 
 function ipFilterMiddleware(req, res, next) {
