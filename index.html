@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>PHANTOM V23.3 | WebRTC TURN</title>
+    <title>PHANTOM V24.1 | PRO E2EE</title>
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
@@ -21,7 +21,9 @@
         .btn-alert { flex: 1; padding: 12px; border-radius: 8px; border: none; font-weight: bold; color: white; cursor: pointer; min-width: 80px; }
         #sos-btn { background: var(--sos); }
         #invite-btn { background: var(--neon); color: black; }
-        #chat { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; border: 1px solid #111; margin-bottom: 10px; display: flex; flex-direction: column; max-height: 40vh; }
+        #rafagas-panel { background: #111; border: 1px solid #333; border-radius: 8px; padding: 5px; margin-bottom: 10px; min-height: 40px; display: flex; overflow-x: auto; gap: 5px; align-items: center; }
+        .rafaga-btn { background: #222; border: 1px solid var(--neon); color: var(--neon); font-size: 10px; padding: 5px 10px; border-radius: 15px; cursor: pointer; white-space: nowrap; }
+        #chat { flex: 1; overflow-y: auto; background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; border: 1px solid #111; margin-bottom: 10px; display: flex; flex-direction: column; max-height: 35vh; }
         .msg { background: rgba(255,255,255,0.03); padding: 8px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--neon); font-size: 12px; position: relative; word-wrap: break-word; }
         .msg-time { position: absolute; right: 8px; top: 8px; font-size: 9px; color: #555; }
         #talk-btn { width: 100%; padding: 40px 0; border-radius: 20px; border: 2px solid #333; background: #111; color: #444; font-weight: 900; font-size: 20px; touch-action: manipulation; margin: 10px 0; -webkit-touch-callout: none; }
@@ -39,7 +41,7 @@
 
 <div id="auth-overlay">
     <form class="card" onsubmit="event.preventDefault(); startEnlace();">
-        <h2 style="color: var(--neon); text-align: center; margin-top:0;">PHANTOM V23.3</h2>
+        <h2 style="color: var(--neon); text-align: center; margin-top:0;">PHANTOM V24.1</h2>
         <div id="setup-fields">
             <input type="text" id="url-in" placeholder="URL SERVER WSS" required>
             <input type="text" id="room-in" placeholder="CANAL" required>
@@ -68,6 +70,12 @@
         <button id="sos-btn" class="btn-alert" onclick="triggerAlert('SOS')">🚨 SOS</button>
         <button id="invite-btn" class="btn-alert" onclick="generateInviteQR()">➕ INVITAR</button>
     </div>
+    
+    <div id="rafagas-panel">
+        <span style="font-size:10px; color:#555; margin-right:5px;">RÁFAGAS:</span>
+        <div id="rafagas-list" style="display:flex; gap:5px;"></div>
+    </div>
+
     <div id="chat"></div>
     <button id="talk-btn" disabled oncontextmenu="return false;">STANDBY</button>
 </div>
@@ -82,25 +90,16 @@
 <script>
     let socket, localStream, myNick, roomName, wakeLock = null;
     let peers = {}; 
+    let mediaRecorder, audioChunks = [];
+    let aesKey = null; 
     
-    // Configuración obligatoria para atravesar NAT Simétrico (4G/5G)
     const rtcConfig = { 
         iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:100.96.157.37:3478' },
             { 
-                urls: 'turn:openrelay.metered.ca:80',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            { 
-                urls: 'turn:openrelay.metered.ca:443',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            { 
-                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
+                urls: 'turn:100.96.157.37:3478',
+                username: 'phantom_oper',
+                credential: 'tactical_pass_2026'
             }
         ] 
     };
@@ -115,18 +114,35 @@
                 document.getElementById('room-in').value = data.room;
                 document.getElementById('pass-in').value = data.pass;
                 document.getElementById('setup-fields').style.display = 'none';
-            } catch(e) { console.error("Enlace de invitación inválido"); }
+            } catch(e) { }
         }
-        
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'visible') requestWakeLock();
-        });
     };
 
-    async function requestWakeLock() {
-        if ('wakeLock' in navigator) {
-            try { wakeLock = await navigator.wakeLock.request('screen'); } catch (err) {}
-        }
+    async function deriveAESKey(password, room) {
+        const enc = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(password), "PBKDF2", false, ["deriveKey"]);
+        return crypto.subtle.deriveKey(
+            { name: "PBKDF2", salt: enc.encode(room + "-phantom-v24"), iterations: 250000, hash: "SHA-256" },
+            keyMaterial, { name: "AES-GCM", length: 256 }, false, ["encrypt", "decrypt"]
+        );
+    }
+
+    async function encryptAudioBlob(blob) {
+        const arrayBuffer = await blob.arrayBuffer();
+        const iv = crypto.getRandomValues(new Uint8Array(12)); 
+        const ciphertext = await crypto.subtle.encrypt({ name: "AES-GCM", iv: iv }, aesKey, arrayBuffer);
+        const payload = new Uint8Array(iv.length + ciphertext.byteLength);
+        payload.set(iv, 0); payload.set(new Uint8Array(ciphertext), iv.length);
+        return payload.buffer;
+    }
+
+    async function decryptAudioBuffer(buffer) {
+        const data = new Uint8Array(buffer);
+        const iv = data.slice(0, 12); const ciphertext = data.slice(12);
+        try {
+            const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv: iv }, aesKey, ciphertext);
+            return new Blob([decrypted], { type: 'audio/webm' });
+        } catch (e) { return null; }
     }
 
     async function startEnlace() {
@@ -135,39 +151,29 @@
         const pass = document.getElementById('pass-in').value;
         myNick = document.getElementById('nick-in').value;
 
+        aesKey = await deriveAESKey(pass, roomName);
+
         try {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                throw new Error("API bloqueada. Requiere HTTPS.");
-            }
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("API bloqueada. Requiere HTTPS.");
             localStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
             localStream.getAudioTracks()[0].enabled = false; 
         } catch (err) {
-            alert(`Fallo de Micrófono:\n${err.message}\nVerifica permisos de la app.`);
+            alert(`Fallo de Micrófono:\n${err.message}`);
             return;
         }
 
         socket = io(url, { auth: { token: pass } }); 
-
-        socket.on('connect', () => {
-            socket.emit('join-room', { roomName: roomName, nickname: myNick });
-            requestWakeLock();
-            if(audioCtx.state === 'suspended') audioCtx.resume();
-        });
-
+        socket.on('connect', () => socket.emit('join-room', { roomName: roomName, nickname: myNick }));
         socket.on('joined-success', () => {
             document.getElementById('auth-overlay').style.display = 'none';
             setupApp();
             socket.emit('request-peers'); 
         });
-
-        socket.on('connect_error', () => alert("Error de conexión. Verifica la URL y contraseña."));
     }
 
     function setupApp() {
         const btn = document.getElementById('talk-btn');
-        btn.disabled = false;
-        btn.innerText = "PULSAR PARA HABLAR";
-        btn.classList.add('ready');
+        btn.disabled = false; btn.innerText = "PULSAR PARA HABLAR"; btn.classList.add('ready');
 
         socket.on('user-list', list => {
             document.getElementById('user-list-btn').innerText = `OPERADORES: ${list.length} ▾`;
@@ -176,11 +182,21 @@
 
         socket.on('chat-message', d => addMessage(`<b>${d.user}:</b> ${d.text}`, d.time));
 
-        socket.on('incoming-alert', d => {
-            playEmergencySiren();
-            const isSOS = d.type === 'SOS';
-            const mapUrl = `https://www.google.com/maps?q=$${d.coords.lat},${d.coords.lon}`;
-            addMessage(`<b style="color:var(--sos)">${isSOS ? '🚨 SOS' : '📍 POS'} DE ${d.user}</b><br><a href="${mapUrl}" target="_blank" style="color:var(--neon)">MAPA GPS</a>`, d.time);
+        socket.on('audio-history', history => {
+            const list = document.getElementById('rafagas-list');
+            list.innerHTML = history.map(h => `<button class="rafaga-btn" onclick="requestAudioPlayback('${h.id}')">▶ ${h.user} (${h.time})</button>`).join('');
+        });
+
+        socket.on('deliver-audio', async data => {
+            const blob = await decryptAudioBuffer(data.buffer);
+            if (blob) {
+                const audioUrl = URL.createObjectURL(blob);
+                const audioObj = new Audio(audioUrl);
+                audioObj.play();
+                audioObj.onended = () => URL.revokeObjectURL(audioUrl); 
+            } else {
+                addMessage(`<b style="color:var(--sos)">Error: Audio corrupto o clave incorrecta.</b>`);
+            }
         });
 
         socket.on('ptt-active', u => {
@@ -199,6 +215,8 @@
         initPTTLogic(btn);
     }
 
+    function requestAudioPlayback(audioId) { socket.emit('request-audio', audioId); }
+
     function setupWebRTCSignaling() {
         socket.on('user-joined', async (userId) => {
             const peerConnection = createPeerConnection(userId);
@@ -210,7 +228,6 @@
         socket.on('webrtc-signal', async ({ sender, type, data }) => {
             let pc = peers[sender];
             if (!pc && type === 'offer') pc = createPeerConnection(sender);
-
             if (type === 'offer') {
                 await pc.setRemoteDescription(new RTCSessionDescription(data));
                 const answer = await pc.createAnswer();
@@ -224,49 +241,25 @@
         });
 
         socket.on('user-disconnected', userId => {
-            if(peers[userId]) {
-                peers[userId].close();
-                delete peers[userId];
-                const audioEl = document.getElementById(`audio-${userId}`);
-                if(audioEl) audioEl.remove();
-            }
+            if(peers[userId]) { peers[userId].close(); delete peers[userId]; }
         });
     }
 
     function createPeerConnection(userId) {
         const pc = new RTCPeerConnection(rtcConfig);
         peers[userId] = pc;
-
         localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-
-        pc.oniceconnectionstatechange = () => {
-            if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
-                addMessage(`<b style="color:var(--sos)">⚠️ Advertencia de Red: Enlace de audio con ${userId} inestable.</b>`);
-            }
-        };
-
-        pc.onicecandidate = event => {
-            if (event.candidate) {
-                socket.emit('webrtc-signal', { target: userId, type: 'ice-candidate', data: event.candidate });
-            }
-        };
 
         pc.ontrack = event => {
             let audioEl = document.getElementById(`audio-${userId}`);
             if (!audioEl) {
-                audioEl = document.createElement('audio');
-                audioEl.id = `audio-${userId}`;
-                audioEl.autoplay = true;
-                audioEl.playsInline = true;
+                audioEl = document.createElement('audio'); audioEl.id = `audio-${userId}`;
+                audioEl.autoplay = true; audioEl.playsInline = true;
                 document.getElementById('audio-container').appendChild(audioEl);
             }
             audioEl.srcObject = event.streams[0];
-            
-            audioEl.play().catch(e => {
-                console.warn("Autoplay bloqueado.", e);
-            });
+            audioEl.play().catch(e => console.warn("Autoplay bloqueado.", e));
         };
-
         return pc;
     }
 
@@ -280,6 +273,11 @@
             btn.classList.add('active');
             document.getElementById('status-led').classList.add('led-tx');
             socket.emit('ptt-active');
+
+            audioChunks = [];
+            mediaRecorder = new MediaRecorder(localStream);
+            mediaRecorder.ondataavailable = ev => audioChunks.push(ev.data);
+            mediaRecorder.start();
         };
 
         const stopTx = () => {
@@ -289,6 +287,15 @@
                 document.getElementById('status-led').classList.remove('led-tx');
                 socket.emit('ptt-inactive');
                 playRogerBeep();
+
+                mediaRecorder.onstop = async () => {
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    if (blob.size > 0) {
+                        const encryptedBuffer = await encryptAudioBlob(blob);
+                        socket.emit('store-audio', encryptedBuffer);
+                    }
+                };
+                mediaRecorder.stop();
             }
         };
 
@@ -317,52 +324,9 @@
         o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.1);
     }
 
-    function playEmergencySiren() {
-        if(!audioCtx) return;
-        const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
-        o.type = 'sawtooth'; o.frequency.setValueAtTime(440, audioCtx.currentTime);
-        o.frequency.linearRampToValueAtTime(880, audioCtx.currentTime + 0.3);
-        o.frequency.linearRampToValueAtTime(440, audioCtx.currentTime + 0.6);
-        g.gain.setValueAtTime(0.2, audioCtx.currentTime);
-        g.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.6);
-        o.connect(g); g.connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + 0.6);
-    }
-
-    function generateInviteQR() {
-        const data = { url: document.getElementById('url-in').value, room: document.getElementById('room-in').value, pass: document.getElementById('pass-in').value };
-        const inviteUrl = `${window.location.origin}${window.location.pathname}#inv=${btoa(JSON.stringify(data))}`;
-        const qrContainer = document.getElementById('invite-qrcode');
-        qrContainer.innerHTML = "";
-        new QRCode(qrContainer, { text: inviteUrl, width: 250, height: 250 });
-        document.getElementById('invite-overlay').style.display = 'flex';
-    }
-
-    function copyInviteLink(e) {
-        e.stopPropagation();
-        const data = { url: document.getElementById('url-in').value, room: document.getElementById('room-in').value, pass: document.getElementById('pass-in').value };
-        const inviteUrl = `${window.location.origin}${window.location.pathname}#inv=${btoa(JSON.stringify(data))}`;
-        navigator.clipboard.writeText(inviteUrl).then(() => alert("Enlace copiado"));
-    }
-
     function sendMsg() {
         const i = document.getElementById('msg-in');
         if(i.value.trim()){ socket.emit('chat-message', i.value); i.value = ""; }
-    }
-
-    function triggerAlert(type) {
-        if (!navigator.geolocation) {
-            alert("Tu navegador no soporta geolocalización.");
-            return;
-        }
-        navigator.geolocation.getCurrentPosition(
-            p => socket.emit('send-alert', { type, coords: { lat: p.coords.latitude, lon: p.coords.longitude } }),
-            err => alert("Error obteniendo ubicación. Verifica los permisos de la app.")
-        );
-    }
-
-    function toggleUsers() {
-        const d = document.getElementById('user-dropdown');
-        d.style.display = d.style.display === 'block' ? 'none' : 'block';
     }
 </script>
 </body>
