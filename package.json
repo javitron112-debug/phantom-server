@@ -1,7 +1,7 @@
 {
-  "name": "phantom-server",
-  "version": "23.1.0",
-  "description": "Servidor de Señalización WebRTC para PHANTOM TACTICAL",
+  "name": "phantom-server-pro",
+  "version": "24.1.0",
+  "description": "Servidor Táctico Híbrido WebRTC/WSS",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
