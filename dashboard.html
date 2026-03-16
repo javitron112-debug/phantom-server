@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PHANTOM COMMAND CENTER</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        :root { --neon: #00ff41; --bg: #050508; --card: #111; --border: #333; }
+        body { margin: 0; padding: 20px; background: var(--bg); color: white; font-family: 'Courier New', monospace; }
+        h1 { color: var(--neon); text-align: center; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        #auth-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 60vh; }
+        #auth-panel input { padding: 10px; margin-bottom: 10px; background: black; color: var(--neon); border: 1px solid var(--neon); width: 250px; text-align: center; }
+        #auth-panel button { padding: 10px 20px; background: var(--neon); color: black; font-weight: bold; border: none; cursor: pointer; }
+        #dashboard { display: none; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .metric-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; position: relative; }
+        .metric-card h3 { margin: 0 0 10px 0; color: #888; font-size: 14px; text-transform: uppercase; }
+        .metric-value { font-size: 32px; font-weight: bold; color: var(--neon); margin: 10px 0; }
+        .metric-unit { font-size: 12px; color: #666; }
+        .status-dot { height: 12px; width: 12px; background-color: var(--neon); border-radius: 50%; display: inline-block; margin-right: 5px; box-shadow: 0 0 8px var(--neon); }
+        .status-disconnected { background-color: red; box-shadow: 0 0 8px red; }
+    </style>
+</head>
+<body>
+
+    <div id="auth-panel">
+        <h2 style="color:var(--neon)">ACCESO RESTRINGIDO</h2>
+        <input type="password" id="admin-pass" placeholder="CLAVE DE SISTEMA">
+        <button onclick="connectAdmin()">INICIAR SESIÓN</button>
+        <p id="error-msg" style="color:red; display:none; font-size:12px;">Credenciales rechazadas</p>
+    </div>
+
+    <div id="dashboard">
+        <div style="grid-column: 1 / -1; text-align: left; margin-bottom: 20px;">
+            <h2><span id="conn-status" class="status-dot status-disconnected"></span> ENLACE DE MANDO ACTIVO</h2>
+            <p style="color:#888; font-size:12px;">Datos actualizados en tiempo real mediante telemetría WSS.</p>
+        </div>
+        <div class="metric-card">
+            <h3>Operadores Activos</h3><div class="metric-value" id="val-users">0</div><div class="metric-unit">DISPOSITIVOS CONECTADOS</div>
+        </div>
+        <div class="metric-card">
+            <h3>Tráfico de Red (Node)</h3><div class="metric-value" style="font-size: 20px;">RX: <span id="val-rx">0</span><br>TX: <span id="val-tx">0</span></div><div class="metric-unit">MENSAJES PROCESADOS</div>
+        </div>
+        <div class="metric-card">
+            <h3>Almacenamiento (Vault)</h3><div class="metric-value" id="val-disk">0.00</div><div class="metric-unit">MEGABYTES (MB) Ocupados</div>
+        </div>
+        <div class="metric-card">
+            <h3>Memoria RAM (RSS)</h3><div class="metric-value"><span id="val-ram">0.00</span></div><div class="metric-unit">MB USADOS DEL SERVIDOR</div>
+        </div>
+        <div class="metric-card">
+            <h3>Carga de CPU</h3><div class="metric-value" id="val-cpu">0.00</div><div class="metric-unit">PROMEDIO 1 MINUTO</div>
+        </div>
+        <div class="metric-card">
+            <h3>Tiempo de Actividad</h3><div class="metric-value" id="val-uptime">00:00:00</div><div class="metric-unit">UPTIME DEL SERVICIO (HH:MM:SS)</div>
+        </div>
+        <div class="metric-card">
+            <h3>Latencia de Telemetría</h3><div class="metric-value" id="val-ping">0</div><div class="metric-unit">MILISEGUNDOS (ms)</div>
+        </div>
+    </div>
+
+<script>
+    let socket;
+    let pingInterval;
+
+    function formatUptime(seconds) {
+        const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
+        const m = Math.floor((seconds % 3600) / 60).toString().padStart(2, '0');
+        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    }
+
+    function connectAdmin() {
+        const pass = document.getElementById('admin-pass').value;
+        const url = window.location.origin + '/admin'; 
+        
+        socket = io(url, { auth: { token: pass } });
+
+        socket.on('connect', () => {
+            document.getElementById('auth-panel').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'grid';
+            document.getElementById('conn-status').classList.remove('status-disconnected');
+            pingInterval = setInterval(() => socket.emit('ping', Date.now()), 2000);
+        });
+
+        socket.on('connect_error', () => {
+            document.getElementById('error-msg').style.display = 'block';
+            socket.disconnect();
+        });
+
+        socket.on('disconnect', () => {
+            document.getElementById('conn-status').classList.add('status-disconnected');
+            clearInterval(pingInterval);
+        });
+
+        socket.on('pong', (ms) => document.getElementById('val-ping').innerText = ms);
+
+        socket.on('telemetry-update', (data) => {
+            document.getElementById('val-users').innerText = data.connectedUsers;
+            document.getElementById('val-rx').innerText = data.msgRx;
+            document.getElementById('val-tx').innerText = data.msgTx;
+            document.getElementById('val-disk').innerText = data.vaultSize;
+            document.getElementById('val-ram').innerText = data.ramUsed;
+            document.getElementById('val-cpu').innerText = data.cpuLoad;
+            document.getElementById('val-uptime').innerText = formatUptime(data.uptime);
+        });
+    }
+</script>
+</body>
+</html>
