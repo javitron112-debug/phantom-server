@@ -36,13 +36,13 @@ function writeLog(event, details) {
 
 const recentAudioMap = new Map(); 
 
-// --- SEGURIDAD PERIMETRAL: FILTRO IP ACTUALIZADO PARA TAILSCALE ---
+// --- SEGURIDAD PERIMETRAL: FILTRO IP ---
 function isIpAuthorized(clientIp) {
+    // Permite Localhost, Red Local Residencial y Red VPN Tailscale para el administrador
     return clientIp.includes('127.0.0.1') || 
            clientIp === '::1' || 
            clientIp.includes('192.168.') || 
-           clientIp.includes('100.'); // Permite el acceso a los nodos de Tailscale
-}
+           clientIp.includes('100.');
 }
 
 function ipFilterMiddleware(req, res, next) {
@@ -50,7 +50,7 @@ function ipFilterMiddleware(req, res, next) {
     if (isIpAuthorized(clientIp)) {
         next();
     } else {
-        writeLog('SECURITY_BLOCK', `Intento de acceso HTTP bloqueado. IP: ${clientIp}`);
+        writeLog('SECURITY_BLOCK', `Intento de acceso HTTP al Dashboard bloqueado. IP: ${clientIp}`);
         res.status(403).send('<h1>ACCESO DENEGADO: IP NO AUTORIZADA</h1>');
     }
 }
