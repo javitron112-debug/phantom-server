@@ -93,11 +93,12 @@
     let mediaRecorder, audioChunks = [];
     let aesKey = null; 
     
+    // ENRUTAMIENTO UNIVERSAL A TU CASA
     const rtcConfig = { 
         iceServers: [
-            { urls: 'stun:100.96.157.37:3478' },
+            { urls: 'stun:192.168.2.233:3478' },
             { 
-                urls: 'turn:100.96.157.37:3478',
+                urls: 'turn:192.168.2.233:3478',
                 username: 'phantom_oper',
                 credential: 'tactical_pass_2026'
             }
